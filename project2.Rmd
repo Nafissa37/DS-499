@@ -1,0 +1,533 @@
+---
+title: "Pittsburgh Trees"
+author: "Nafissa Bia"
+date: "December 3, 2024"
+output:
+    prettydoc::html_pretty:
+    theme: hpstr
+    toc: yes
+---
+
+```{r include = FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+```
+
+```{r eval = FALSE}
+install.packages(prettydoc)
+```
+
+
+```{r load-libraries}
+library(tidyverse)
+library(leaflet)
+library(stringr)
+library(caret)
+library(broom)
+library(tidymodels)
+
+library(pROC)
+library(randomForest)
+```
+
+```{r load-data}
+trees <- read_csv("data/trees.csv", na=c("", "N/A"))
+```
+
+## Introduction ##
+This paper analyzes data on trees from Pittsburgh, Pennsylvania. The dataset was obtained from [Data.gov](https://catalog.data.gov/dataset/city-of-pittsburgh-trees) and contains detailed information about trees maintained by The City of Pittsburgh Department of Public Works Forestry Division. The dataset consists of `r nrow(trees)` rows and `r ncol(trees)` columns, with each row representing a single tree located within the city’s boundaries. The data was collected through physical inspections and monitoring efforts and was last updated in 2020.
+
+
+```{r echo = FALSE, out.height="40%", out.width = "60%", fig.align = "center"}
+knitr::include_graphics("img/pittsburgh_trees.jpg")
+```
+
+Each tree is identified by location-specific details, such as `address_number` and `street_name`, and geographic coordinates, such as`longitude` and `latitude`. The dataset includes categorical variables, like `street`, `common_name`, `scientific_name`, and `growth_space_type` ('Well or Pit', 'Open or Unrestricted', etc.) that describe the tree’s location, identity, and growing conditions. Other categorical variables, such as `land_use` ('Residential', 'Vacant', etc.), indicate the type of property on which the tree is situated.
+
+There are also several continuous variables that characterize the physical dimensions and environmental benefits provided by each tree. These include measurements like `height`, `width`, `growth_space_length`, `growth_space_width`, and `diameter_base_height`, which give information on the tree’s size and growth space. Environmental benefits, such as stormwater management and air quality improvement, are quantified through variables like `co2_benefits_maint_lbs`, `air_quality_benfits_so2dep_lbs`, and `stormwater_benefits_runoff_elim.` Additionally, variables like `energy_benefits_electricity_dollar_value` and `energy_benefits_gas_dollar_value` estimate energy savings provided by each tree in terms of reducing electricity and gas usage. 
+
+All the tree benefits from this dataset were calculated using the [National Tree Benefit Calculator Web Service](http://www.treebenefits.com/calculator/webservicedescription.cfm), which estimates the environmental benefits of individual trees based on their species, size (e.g diameter at breast height), and location/regional climate. It uses scientific models developed by the U.S. Forest Service and other research institutions to quantify benefits like carbon dioxide reduction, stormwater management, or air quality improvement in units such as pounds, gallons, etc., or in dollars to represent the financial value of the ecosystem services provided by these trees.
+
+Overall, this dataset gives a comprehensive view of the value and condition of Pittsburgh's urban forest.
+
+
+## Research Questions ##
+
+After an initial study of the variables contained in this dataset, here are a few questions of interest:
+- Which factors influence the amount of stormwater runoff absorbed by trees?
+- Can tree dimensions predict their impact on air quality?
+- Do trees with overhead utilities grow differently or provide fewer benefits?
+- Is there a significant difference in the CO$_2$ benefits between trees located in residential areas versus vacant or industrial areas?
+
+
+## Exploratory Data Analysis ##
+
+- **Check for missing values**: Some NA values were entered as ‘N/A’, so that was corrected when reading in the data. Using summary() showed that there are many missing values for most columns in this dataset. **For better visualizations, all the observations with NA values are being omitted**. For categorical variables, count() was used to get a glimpse of categories (e.g., counts of trees in each neighborhood or by land use).
+  
+```{r eval = FALSE}
+summary(trees)
+```
+```{r eval = FALSE}
+colSums(is.na(trees))
+```
+
+```{r}
+trees <- na.omit(trees)
+```
+
+```{r eval = FALSE}
+trees %>%
+  count(neighborhood) %>%
+  arrange(desc(n))
+```
+
+- **Exploring Quantitative Variables**: For some numeric variables like `height`, `diameter_base_height`, and `overall_benefits_dollar_value`, plotting histograms and boxplots showed unimodal right-skewed distributions with many high outliers and relatively small IQR values. Some of these graphs are shown below. 
+  
+```{r}
+# Height
+trees %>%
+  ggplot(aes(x = height)) +
+  geom_boxplot(color = "#7cc560") +
+  labs(title = "Distribution of Height", x = "Height in feet") +
+theme(axis.ticks.y = element_blank(),
+      axis.text.y = element_blank())
+trees %>%
+  ggplot(aes(x = height)) +
+  geom_histogram(binwidth = 10, fill = "#7cc560", color = "black") +
+  labs(title = "Distribution of Height", x = "Height in feet", y = "Count") 
+```
+
+```{r}
+summary(trees$height)
+```
+```{r eval = FALSE}
+# Width
+trees %>%
+  ggplot(aes(x = width)) +
+  geom_boxplot(color = "#7cc560") +
+  labs(title = "Distribution of Width", x = "Width in feet") +
+theme(axis.ticks.y = element_blank(),
+      axis.text.y = element_blank())
+```
+```{r eval = FALSE}
+summary(trees$width)
+```
+
+
+```{r eval = FALSE}
+# Diameter Base Height
+trees %>%
+  ggplot(aes(x = diameter_base_height)) +
+  geom_boxplot(color = "#7cc560") +
+  labs(title = "Distribution of Diameter Base Height", x = "Diameter Base Height in feet") +
+theme(axis.ticks.y = element_blank(),
+      axis.text.y = element_blank())
+```
+```{r eval =  FALSE}
+summary(trees$diameter_base_height)
+```
+
+
+```{r eval = FALSE}
+# Total CO2 Benefits
+trees %>%
+  ggplot(aes(x = co2_benefits_totalco2_lbs)) +
+  geom_boxplot(color = "#7cc560") +
+  labs(title = "Distribution of Total CO2 Benefits", x = "Total CO2 Benefits in lbs") +
+theme(axis.ticks.y = element_blank(),
+      axis.text.y = element_blank())
+```
+```{r eval = FALSE}
+summary(trees$co2_benefits_totalco2_lbs)
+```
+
+
+``` {r}
+# Total Benefits
+trees %>%
+  ggplot(aes(x = overall_benefits_dollar_value)) +
+  geom_boxplot(color = "#7cc560") +
+  labs(title = "Distribution of Total Benefits", x = "Total Benefits") +
+  scale_x_continuous(labels = scales::label_dollar()) + 
+  theme(axis.ticks.y = element_blank(),
+        axis.text.y = element_blank())
+trees %>%
+  ggplot(aes(x = overall_benefits_dollar_value)) +
+  geom_histogram(binwidth = 25, fill = "#7cc560", color = "black") +
+  labs(title = "Distribution of Total Benefits", x = "Total Benefits", y = "Count") 
+
+```
+```{r}
+summary(trees$overall_benefits_dollar_value)
+```
+
+```{r eval =  FALSE}
+trees %>%
+  filter(overall_benefits_dollar_value < 0) %>%
+  select(common_name, scientific_name, overall_benefits_dollar_value)
+```
+
+Additionally, there weren't values that seemed wrong (e.g., negative values) for the most part. However, 'Colorado spruce' trees were found to have negative total environmental benefits, which could be explained by their poor adaptation to local urban conditions, such as drought, heat, and shade stress (source: [NC Cooperative Extension](https://henderson.ces.ncsu.edu/2020/07/colorado-blue-spruce-issues/#:~:text=Below%204000%20feet%20Colorado%20blue,spruce%20also%20needs%20dry%20air.)
+). These factors reduce their growth and canopy size, limiting benefits like carbon sequestration and stormwater management. Additionally, high maintenance costs, including pruning or pest control, may outweigh their environmental contributions, leading to a net negative value in the benefit model.
+
+- **Transformations**: Since some of the quantitative variables, like `height` and `width`, are very right-skewed, using a log transformation may yield better results on the graphs:
+  
+```{r}
+# Width
+trees %>%
+  mutate(width = log(width)) %>%
+  ggplot(aes(x = width)) +
+  geom_boxplot(color = "#7cc560") +
+  labs(title = "Distribution of Width", x = "Log of Width in feet") +
+theme(axis.ticks.y = element_blank(),
+      axis.text.y = element_blank())
+```
+```{r}
+# Height
+trees %>%
+  mutate(height = log(height)) %>%
+  ggplot(aes(x = height)) +
+  geom_boxplot(color = "#7cc560") +
+  labs(title = "Distribution of Height", x = "Log of Height in feet") +
+theme(axis.ticks.y = element_blank(),
+      axis.text.y = element_blank())
+```
+
+For `width`, using a log transformation didn't improve the visualization considerably. For `height`, the transformation shows a lot less high outliers but a slightly left-skewed distribution with some low outliers. Overall, using a log transformation doesn't seem to help considerably.
+
+ - **Variable and value names**
+    - Some of the variable names are slightly lengthy, especially the variables about environmental benefits. Thus these variables have been recoded to have shorter names.
+    
+```{r}
+trees_clean <- trees %>%
+  rename(stormwater_benefits = stormwater_benefits_dollar_value, 
+         stormwater_elimination = stormwater_benefits_runoff_elim,
+         electricity_benefits = energy_benefits_electricity_dollar_value,
+         gas_benefits = energy_benefits_gas_dollar_value,
+         total_air_benefits = air_quality_benfits_total_dollar_value,
+         sequestred_CO2 = co2_benefits_sequestered_lbs,
+         total_benefits = overall_benefits_dollar_value)
+```
+
+    - For some of the categorical variables, there are inconsistencies in the names of the values. For instance, for the variable `growth_space_type`, there were values such as ‘Well or Pit’ and ‘Well/Pit’ or ‘Tree Lawn’ and ‘Tree Law or Parkway’, which are recoded to be in the same categories. Some of recoded values are displayed below.
+    
+Initial values for `growth_space_type`: 
+```{r}
+#Growth Space Type
+trees_clean %>%
+  distinct(growth_space_type)
+```
+
+```{r}
+trees_clean <- trees_clean %>%
+  mutate(growth_space_type = case_when(
+    growth_space_type == "Well or Pit" ~ "Well/Pit",
+    growth_space_type == "Open or Unrestricted" ~ "Open",
+    growth_space_type == "Open or Restricted" ~ "Restricted",
+    growth_space_type == "Tree Lawn or Parkway" ~ "Tree Lawn",
+    TRUE ~ growth_space_type,
+  ))
+```
+
+Recoded values for `growth_space_type`:
+```{r}
+#Recoded values
+trees_clean %>%
+  distinct(growth_space_type)
+```
+
+Initial values for `overhead_utilities`:
+```{r}
+trees_clean %>%
+  distinct(overhead_utilities)
+```
+
+```{r}
+trees_clean <- trees_clean %>%
+  mutate(overhead_utilities = case_when(
+    overhead_utilities == "Conflicting" ~ "Yes",
+    TRUE ~ overhead_utilities,
+  ))
+```
+
+Recoded values for `overhead_utilities`:
+```{r}
+trees_clean %>%
+  distinct(overhead_utilities)
+```
+
+```{r eval = FALSE}
+trees_clean %>%
+  distinct(land_use)
+```
+
+```{r eval = FALSE} 
+#Will need re-leveling when using in graphs
+trees_clean %>%
+  distinct(condition)
+```
+
+  - **Exploring categorical variables** 
+
+Here are the distributions of some categorical variables in this dataset:
+
+```{r eval = FALSE}
+trees_clean %>%
+  count(common_name) %>%
+  arrange(desc(common_name))
+```
+
+
+
+```{r}
+# Growth Space Type
+trees_clean %>%
+  ggplot(aes(x = growth_space_type)) +
+  geom_bar(fill = "#7cc560") +
+  labs(title = "Distribution of Growth Space Type", 
+       x = "", y = "Count")
+```
+
+*There is a considerable variation between growth space types. 'Well/Pit', 'Tree Lawn', and 'Open' are by far the most common growth space types. 'Island' and 'Raised Planter' are the least common spaces.*
+
+```{r}
+# Presence of Overhead Utilities
+trees_clean %>%
+  ggplot(aes(x = overhead_utilities)) +
+  geom_bar(fill = "#7cc560") +
+  labs(title = "Distribution of Overhead Utilities Presence", 
+       x = "", y = "Count")
+```
+
+*There are many trees both with and without overhead utilities, but most trees do not have overhead utilities.*
+
+```{r}
+# Land Use
+trees_clean %>%
+  ggplot(aes(y = land_use)) +
+  geom_bar(fill = "#7cc560") +
+  labs(title = "Distribution of Land Use", 
+       x = "Count", y = "")
+```
+
+*The most common land use category for trees in this dataset is 'Residential', followed by 'Commercial/Industrial' and 'Vacant'. There are relatively very small numbers of trees in other types of land use, such as 'Water/Wetland', 'Golf Course', and 'Agriculture'.*
+
+```{r}
+trees_clean %>%
+  ggplot(aes(x = condition)) +
+  geom_bar(fill = "#7cc560") +
+  labs(title = "Distribution of Tree Condition", 
+       x = "", y = "Count")
+```
+
+*Most trees are in 'Good' or 'Fair' condition, while very few trees are in 'Excellent' or 'Very Good' condition. The numbers of trees in 'Critical' and 'Dead' conditions are roughly the same.*
+
+  - **Exploring pairs of potentially related variables**: We will now explore pairs of potentially related variables to identify relationships and interactions that could emerge when included in the same models.  
+
+```{r}
+#Height vs. Width
+trees_clean %>%
+  filter(height < 125) %>%
+  ggplot(aes(x = width, y = height)) +
+  geom_point(color = "#7cc560", alpha = 0.75) +
+  labs(title = "Height vs. Width", subtitle = "(for height < 125)",
+       x = "Width in feet", y = "Height in feet")
+```
+
+*This scatter plot shows a weak to moderate positive linear relationship between tree height and width for values of height less than 125 feet (filtered to exclude a few extreme outliers). As the width of a tree increases, its height tends to increase as well. Trees with widths under 20 feet vary widely in height, while trees with larger widths tend to have heights within a more limited range, which could be explained by the fact that there are fewer trees with larger widths (the outliers). It should also be noted that height and width both have discrete values only, which is reflected in the scatter plot.*
+
+
+```{r eval = FALSE}
+trees_clean %>%
+  count(height)
+```
+
+
+```{r}
+trees_clean <- trees_clean %>%
+  mutate(growth_space_area = growth_space_length * growth_space_width) 
+```
+
+```{r}
+trees_clean %>%
+  filter(stems < 200) %>%
+  ggplot(aes(x = growth_space_area, y = stems)) +
+    geom_point(color = "#7cc560", alpha = 0.75) + 
+    labs(title = "Number of Stems vs. Growth Space Area",
+         subtitle = "(for number of stems < 200)",
+         x = "Growth Space Area in squared feet",
+         y = "Number of Stems")
+
+```
+
+*This plot shows the relationship between a tree's number of stems and the area of its growth space. There doesn't seem to be a linear relationship between number of stems and growth space area, though a smaller growth space occasionally supports trees with more stems, and only a small number of trees have both high growth space area and many stems.*
+
+```{r}
+trees_clean %>%
+  mutate(growth_space_type2 = fct_lump_n(growth_space_type, 3)) %>%
+  ggplot(aes(x = diameter_base_height, y = growth_space_type2)) +
+  geom_boxplot(color = "#7cc560") +
+  labs(title = "Growth Space Type vs. Diameter Base Height", 
+       x = "Diameter Base Height in inches", 
+       y = "")
+```
+
+*These boxplots show how the diameter at base height of trees differs across types of growth spaces. Trees in 'Open' and 'Tree Lawn' spaces have larger median diameters and larger Q1 and Q3 values compared to trees in 'Well/Pit' and 'Other' spaces. This could suggest that trees in more open spaces are able to grow larger in diameter, potentially due to fewer constraints. Additionally, all the boxplots are right-skewed with lots of high outliers.*
+
+```{r}
+trees_clean <- trees_clean %>%
+  mutate(condition = fct_relevel(condition, "Excellent", "Very Good", "Good", 
+                                 "Fair", "Poor", "Critical", "Dead"))
+```
+
+
+```{r}
+trees_clean %>%
+ggplot(aes(y = overhead_utilities, fill = condition)) +
+  geom_bar(position = "fill") + 
+  labs(title = "Tree Condition by Presence of Overhead Utilities",
+       fill = "Condition",
+       x = "", 
+       y = "Overhead utilities") +
+  scale_fill_brewer(palette = "RdYlGn", direction  = -1)  #Default palette going from green to red
+
+```
+
+*The stacked bar graphs show the relationship between the presence of overhead utilities and tree condition. Since the distributions of tree condition are not exactly the same for trees with overhead utilities and trees without overhead utilities, there appears to be an association between the presence of overhead utilities and tree condition. There are different proportions of trees in "Poor", "Fair", and "Good" conditions in trees with and without overhead utilities, while there are similar proportions of trees in "Critical" and "Very Good" conditions. This may indicate that trees with average health status tend to be more affected by the presence of overhead utilities than trees with very good or very bad health status. For instance, when there are no overhead utilities, there are more trees in "Good" condition than trees in "Fair" condition, whereas when there are overhead utilities, there are more trees in "Fair" condition than trees in "Good" condition.*
+  
+## Splitting Data ##
+
+#### Filters ####
+- Stormwater elimination < 10000 gallons
+- Height < 125 feet
+- Add Overhead_numeric (may not need this anymore - was used for logistic regression)
+-
+
+```{r data-filtering}
+trees_clean2 <- trees_clean %>%
+  filter(stormwater_elimination < 10000 & height < 125) %>%
+  mutate(overhead_numeric = if_else(overhead_utilities == "Yes", 1, 0),
+    overhead_numeric = as.factor(overhead_numeric))
+```
+
+```{r data-splitting}
+set.seed(1234)
+
+# 80/20 split 
+trees_split <- initial_split(trees_clean2, prop = 0.80)
+train_data <- training(trees_split)
+test_data <- testing(trees_split)
+
+```
+
+
+## Exploring Research Questions ## (1,3,4,& 5)
+
+We are now going to seek for answers to our questions of interest.
+
+### 1. Which factors influence the amount of stormwater runoff absorbed by trees? (Predicting stormwater elimination amount) ###
+#### Fit Random Forest Model ####
+
+```{r}
+rf_stormwater <- randomForest(
+  stormwater_elimination ~ height + diameter_base_height + growth_space_type +
+    overhead_utilities + condition,
+  data = train_data,
+  ntree = 500,  #number of trees
+  importance = TRUE
+)
+
+rf_stormwater
+```
+
+#### Evaluate Model Performance ####
+
+
+```{r}
+#Variable importance plot
+varImpPlot(rf_stormwater, type=1)
+```
+
+*`Overhead_utilities` and `growth_space_type` have very low importance.*
+
+
+```{r eval=FALSE}
+# Predict on test set
+test_pred_rf <- predict(rf_stormwater, test_data)
+
+confusionMatrix(test_pred_rf, test_data$stormwater_elimination)
+
+# Calculate RMSE?
+
+```
+
+
+### 2. Do certain tree species provide more ecological benefits, such as increased stormwater elimination or higher capture of CO$_2$? ### 
+
+
+### 3. Can tree dimensions predict their impact on air quality? ### 
+
+
+### 4. Do trees with overhead utilities grow differently or provide fewer benefits? (Classifying trees) ### 
+#### Fit Random Forest Model ####
+```{r}
+rf_overhead <- randomForest(
+  overhead_numeric ~ height + width + diameter_base_height + growth_space_area +
+    stormwater_elimination + total_air_benefits,
+  data = train_data,
+  ntree = 500
+)
+
+rf_overhead
+```
+
+#### Evaluate Model Performance ####
+
+```{r}
+# Predict on test set
+test_pred_class <- predict(rf_overhead, test_data, type = "response")
+
+# Confusion Matrix
+conf_mat <- table(test_data$overhead_numeric, test_pred_class)
+conf_mat
+
+# Compute Accuracy
+accuracy <- sum(diag(conf_mat)) / sum(conf_mat)
+print(paste("Accuracy:", round(accuracy, 3)))
+
+# ROC Curve & AUC
+roc_curve <- roc(test_data$overhead_numeric, as.numeric(test_pred_class))
+auc_value <- auc(roc_curve)
+print(paste("AUC:", round(auc_value, 3)))
+
+# Plot ROC Curve
+plot(roc_curve, col = "blue", main = "ROC Curve for Overhead Utilities Prediction")
+
+```
+
+
+### 5. Is there a significant difference in the CO$_2$ benefits between trees located in residential areas versus vacant or industrial areas? ### 
+
+
+### 6. How are trees distributed across different neighborhoods or wards in Pittsburgh? ### 
+
+
+### 7. How are trees distributed in Pittsburgh? Are there clusters of some tree species within certain areas of the city? ### 
+
+
+### 8. What is the spatial distribution of trees in poor condition? in excellent condition? ### 
+
+
+### 9. What is the spatial distribution of trees providing the highest total benefits? What is the spatial distribution of trees providing the most significant stormwater management benefits? ### 
+
+
+### 10. Do trees closer to each other in certain areas provide cumulative environmental benefits (e.g., stormwater management or CO$_2$ reduction)? ### 
+
+
+## Conclusion ##
+
+This paper explored the ecological benefits provided by trees in Pittsburgh, focusing on factors influencing stormwater management, CO$_2$ capture, air quality, and spatial distributions. The analyses employed both linear and logistic regression models, alongside spatial visualizations, to uncover patterns and relationships between variables in the dataset. The results showed that tree attributes such as diameter at base height, growth space type, overhead utilities, and condition significantly influence stormwater elimination. Furthermore, specific species like *'Platanus x acerifolia'* and *'Quercus palustris'* were found to provide the highest benefits across multiple ecological metrics. Spatially, trees were generally well-distributed across the city, with the North East showing higher environmental contributions, likely due to species composition and tree condition.  
+
+However, several limitations affected the reliability of these findings. The residual plots for the linear regression models revealed a slight fan-shaped pattern, indicating potential heteroscedasticity and suggesting that model assumptions of constant variance may not fully hold. Outliers were another concern, as many were filtered to improve the models, but their removal may have excluded important variation. The dataset itself, last updated in 2020, may not reflect current conditions, limiting the validity of conclusions drawn about tree health and benefits. The logistic regression model predicting the presence of overhead utilities also showed low predictive power, emphasizing the need for additional or more relevant predictors.  
+
+If the study were to be conducted again, collecting more recent and comprehensive data would be a priority to improve the accuracy and applicability of the findings. Addressing model assumptions through transformations or alternative modeling approaches could also improve statistical validity. Despite these limitations, this analysis highlights the significant contributions of urban trees to environmental sustainability and offers a foundation for future studies aimed at optimizing urban forestry strategies.
+
