@@ -5,11 +5,14 @@ This project investigates the value and condition of Pittsburgh, Pennsylvania’
 
 The primary objectives of this research include:
 
-- **Develop Predictive Models for Tree Benefits**: Implement **decision trees and random forests** to predict tree benefits based on species, size, and location.  
+- **Develop Predictive Models for Tree Benefits**
+  - Implement **decision trees and random forests** to predict tree benefits based on species, size, and location.  
 
-- **Identify Opportunities for Urban Greening**: Determine which parts of Pittsburgh could **benefit from additional tree planting** based on environmental impact analysis.  
+- **Identify Opportunities for Urban Greening** 
+  - Determine which parts of Pittsburgh could **benefit from additional tree planting** based on environmental impact analysis.  
 
-- **Improve Data Science and Machine Learning Skills**: Apply **data wrangling, feature engineering, model validation, and performance measurement** techniques to derive meaningful takeaways from the dataset.  
+- **Improve Data Science and Machine Learning Skills**
+  - Apply **data wrangling, feature engineering, model validation, and performance measurement** techniques to derive meaningful takeaways from the dataset.  
   
 
 
