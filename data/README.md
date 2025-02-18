@@ -2,7 +2,7 @@ Source of data: [Pittsburgh Trees](https://catalog.data.gov/dataset/city-of-pitt
 
 This dataset was obtained from Data.gov and contains information about trees under the supervision of The City of Pittsburgh Department of Public Works Forestry Division. The dataset has 45709 rows and 59 columns and was last updated in 2020.
 
-Each row in this dataset represents a single tree in a specific location within Pittsburgh, Pennsylvania, along with various characteristics, conditions, and the environmental and economic benefits it provides. The data includes information about the tree's physical dimensions, its surroundings, the type of benefits it offers (like stormwater management, property value increase, energy savings, air quality improvement, and CO2 sequestration), and geographic and administrative details (like its location by neighborhood, council district, and other local divisions).
+Each row in this dataset represents a single tree in a specific location within Pittsburgh, Pennsylvania, along with various characteristics, conditions, and the environmental and economic benefits it provides. The data includes information about the tree's physical dimensions, its surroundings, the type of benefits it offers (like stormwater management, property value increase, energy savings, air quality improvement, and CO2 sequestration), and geographic and administrative details (like its location by neighborhood, council district, and other local divisions). All environmental benefits were calculated using the National Tree Benefit Calculator Web Service, which applies models developed by the U.S. Forest Service and other research institutions.
 
 Here is a table of the variables in this dataset:
 
