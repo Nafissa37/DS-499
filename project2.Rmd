@@ -58,24 +58,67 @@ After an initial study of the variables contained in this dataset, here are a fe
 - Do trees with overhead utilities grow differently or provide fewer benefits?
 - Is there a significant difference in the CO$_2$ benefits between trees located in residential areas versus vacant or industrial areas?
 
+## Splitting Data ##
+
+#### Changes to Data Before Splitting ####
+- Filtering
+  - Stormwater elimination < 10000 gallons
+  - Height < 125 feet
+  - Add Overhead_numeric (may not need this anymore - was used for logistic regression)
+  - Omit NA values
+- Renaming Columns
+- Value Names and Orders
+  - Re-leveled `Condition` 
+  
+
+```{r data-filtering}
+trees_clean <- trees %>%
+  rename(stormwater_benefits = stormwater_benefits_dollar_value, 
+         stormwater_elimination = stormwater_benefits_runoff_elim,
+         electricity_benefits = energy_benefits_electricity_dollar_value,
+         gas_benefits = energy_benefits_gas_dollar_value,
+         total_air_benefits = air_quality_benfits_total_dollar_value,
+         sequestred_CO2 = co2_benefits_sequestered_lbs,
+         total_benefits = overall_benefits_dollar_value) %>%
+  filter(stormwater_elimination < 10000 & height < 125) %>%
+  mutate(overhead_numeric = if_else(overhead_utilities == "Yes", 1, 0),
+    overhead_numeric = as.factor(overhead_numeric),
+    growth_space_type = case_when(
+      growth_space_type == "Well or Pit" ~ "Well/Pit",
+      growth_space_type == "Open or Unrestricted" ~ "Open",
+      growth_space_type == "Open or Restricted" ~ "Restricted",
+      growth_space_type == "Tree Lawn or Parkway" ~ "Tree Lawn",
+      TRUE ~ growth_space_type),
+    overhead_utilities = case_when(
+      overhead_utilities == "Conflicting" ~ "Yes",
+      TRUE ~ overhead_utilities),
+    growth_space_area = growth_space_length * growth_space_width,
+    condition = fct_relevel(condition, "Excellent", "Very Good", "Good", 
+                                 "Fair", "Poor", "Critical", "Dead")) 
+```
+
+```{r}
+trees_clean <- na.omit(trees_clean)
+```
+
+
+```{r data-splitting}
+set.seed(1234)
+
+# 80/20 split 
+trees_split <- initial_split(trees_clean, prop = 0.80)
+train_data <- training(trees_split)
+test_data <- testing(trees_split)
+
+```
+
 
 ## Exploratory Data Analysis ##
 
 - **Check for missing values**: Some NA values were entered as ‘N/A’, so that was corrected when reading in the data. Using summary() showed that there are many missing values for most columns in this dataset. **For better visualizations, all the observations with NA values are being omitted**. For categorical variables, count() was used to get a glimpse of categories (e.g., counts of trees in each neighborhood or by land use).
-  
-```{r eval = FALSE}
-summary(trees)
-```
-```{r eval = FALSE}
-colSums(is.na(trees))
-```
-
-```{r}
-trees <- na.omit(trees)
-```
 
 ```{r eval = FALSE}
-trees %>%
+train_data %>%
   count(neighborhood) %>%
   arrange(desc(n))
 ```
@@ -84,24 +127,24 @@ trees %>%
   
 ```{r}
 # Height
-trees %>%
+train_data %>%
   ggplot(aes(x = height)) +
   geom_boxplot(color = "#7cc560") +
   labs(title = "Distribution of Height", x = "Height in feet") +
 theme(axis.ticks.y = element_blank(),
       axis.text.y = element_blank())
-trees %>%
+train_data %>%
   ggplot(aes(x = height)) +
   geom_histogram(binwidth = 10, fill = "#7cc560", color = "black") +
   labs(title = "Distribution of Height", x = "Height in feet", y = "Count") 
 ```
 
 ```{r}
-summary(trees$height)
+summary(train_data$height)
 ```
 ```{r eval = FALSE}
 # Width
-trees %>%
+train_data %>%
   ggplot(aes(x = width)) +
   geom_boxplot(color = "#7cc560") +
   labs(title = "Distribution of Width", x = "Width in feet") +
@@ -109,13 +152,13 @@ theme(axis.ticks.y = element_blank(),
       axis.text.y = element_blank())
 ```
 ```{r eval = FALSE}
-summary(trees$width)
+summary(train_data$width)
 ```
 
 
 ```{r eval = FALSE}
 # Diameter Base Height
-trees %>%
+train_data %>%
   ggplot(aes(x = diameter_base_height)) +
   geom_boxplot(color = "#7cc560") +
   labs(title = "Distribution of Diameter Base Height", x = "Diameter Base Height in feet") +
@@ -123,13 +166,13 @@ theme(axis.ticks.y = element_blank(),
       axis.text.y = element_blank())
 ```
 ```{r eval =  FALSE}
-summary(trees$diameter_base_height)
+summary(train_data$diameter_base_height)
 ```
 
 
 ```{r eval = FALSE}
 # Total CO2 Benefits
-trees %>%
+train_data %>%
   ggplot(aes(x = co2_benefits_totalco2_lbs)) +
   geom_boxplot(color = "#7cc560") +
   labs(title = "Distribution of Total CO2 Benefits", x = "Total CO2 Benefits in lbs") +
@@ -137,33 +180,33 @@ theme(axis.ticks.y = element_blank(),
       axis.text.y = element_blank())
 ```
 ```{r eval = FALSE}
-summary(trees$co2_benefits_totalco2_lbs)
+summary(train_data$co2_benefits_totalco2_lbs)
 ```
 
 
 ``` {r}
 # Total Benefits
-trees %>%
-  ggplot(aes(x = overall_benefits_dollar_value)) +
+train_data %>%
+  ggplot(aes(x = total_benefits)) +
   geom_boxplot(color = "#7cc560") +
   labs(title = "Distribution of Total Benefits", x = "Total Benefits") +
   scale_x_continuous(labels = scales::label_dollar()) + 
   theme(axis.ticks.y = element_blank(),
         axis.text.y = element_blank())
-trees %>%
-  ggplot(aes(x = overall_benefits_dollar_value)) +
+train_data %>%
+  ggplot(aes(x = total_benefits)) +
   geom_histogram(binwidth = 25, fill = "#7cc560", color = "black") +
   labs(title = "Distribution of Total Benefits", x = "Total Benefits", y = "Count") 
 
 ```
 ```{r}
-summary(trees$overall_benefits_dollar_value)
+summary(train_data$total_benefits)
 ```
 
 ```{r eval =  FALSE}
-trees %>%
-  filter(overall_benefits_dollar_value < 0) %>%
-  select(common_name, scientific_name, overall_benefits_dollar_value)
+train_data %>%
+  filter(total_benefits < 0) %>%
+  select(common_name, scientific_name, total_benefits)
 ```
 
 Additionally, there weren't values that seemed wrong (e.g., negative values) for the most part. However, 'Colorado spruce' trees were found to have negative total environmental benefits, which could be explained by their poor adaptation to local urban conditions, such as drought, heat, and shade stress (source: [NC Cooperative Extension](https://henderson.ces.ncsu.edu/2020/07/colorado-blue-spruce-issues/#:~:text=Below%204000%20feet%20Colorado%20blue,spruce%20also%20needs%20dry%20air.)
@@ -173,7 +216,7 @@ Additionally, there weren't values that seemed wrong (e.g., negative values) for
   
 ```{r}
 # Width
-trees %>%
+train_data %>%
   mutate(width = log(width)) %>%
   ggplot(aes(x = width)) +
   geom_boxplot(color = "#7cc560") +
@@ -181,9 +224,10 @@ trees %>%
 theme(axis.ticks.y = element_blank(),
       axis.text.y = element_blank())
 ```
+
 ```{r}
 # Height
-trees %>%
+train_data %>%
   mutate(height = log(height)) %>%
   ggplot(aes(x = height)) +
   geom_boxplot(color = "#7cc560") +
@@ -196,73 +240,16 @@ For `width`, using a log transformation didn't improve the visualization conside
 
  - **Variable and value names**
     - Some of the variable names are slightly lengthy, especially the variables about environmental benefits. Thus these variables have been recoded to have shorter names.
-    
-```{r}
-trees_clean <- trees %>%
-  rename(stormwater_benefits = stormwater_benefits_dollar_value, 
-         stormwater_elimination = stormwater_benefits_runoff_elim,
-         electricity_benefits = energy_benefits_electricity_dollar_value,
-         gas_benefits = energy_benefits_gas_dollar_value,
-         total_air_benefits = air_quality_benfits_total_dollar_value,
-         sequestred_CO2 = co2_benefits_sequestered_lbs,
-         total_benefits = overall_benefits_dollar_value)
-```
 
-    - For some of the categorical variables, there are inconsistencies in the names of the values. For instance, for the variable `growth_space_type`, there were values such as ‘Well or Pit’ and ‘Well/Pit’ or ‘Tree Lawn’ and ‘Tree Law or Parkway’, which are recoded to be in the same categories. Some of recoded values are displayed below.
-    
-Initial values for `growth_space_type`: 
-```{r}
-#Growth Space Type
-trees_clean %>%
-  distinct(growth_space_type)
-```
-
-```{r}
-trees_clean <- trees_clean %>%
-  mutate(growth_space_type = case_when(
-    growth_space_type == "Well or Pit" ~ "Well/Pit",
-    growth_space_type == "Open or Unrestricted" ~ "Open",
-    growth_space_type == "Open or Restricted" ~ "Restricted",
-    growth_space_type == "Tree Lawn or Parkway" ~ "Tree Lawn",
-    TRUE ~ growth_space_type,
-  ))
-```
-
-Recoded values for `growth_space_type`:
-```{r}
-#Recoded values
-trees_clean %>%
-  distinct(growth_space_type)
-```
-
-Initial values for `overhead_utilities`:
-```{r}
-trees_clean %>%
-  distinct(overhead_utilities)
-```
-
-```{r}
-trees_clean <- trees_clean %>%
-  mutate(overhead_utilities = case_when(
-    overhead_utilities == "Conflicting" ~ "Yes",
-    TRUE ~ overhead_utilities,
-  ))
-```
-
-Recoded values for `overhead_utilities`:
-```{r}
-trees_clean %>%
-  distinct(overhead_utilities)
-```
+    - For some of the categorical variables, there are inconsistencies in the names of the values. For instance, for the variable `growth_space_type`, there were values such as ‘Well or Pit’ and ‘Well/Pit’ or ‘Tree Lawn’ and ‘Tree Law or Parkway’, which are recoded to be in the same categories. 
 
 ```{r eval = FALSE}
-trees_clean %>%
+train_data %>%
   distinct(land_use)
 ```
 
 ```{r eval = FALSE} 
-#Will need re-leveling when using in graphs
-trees_clean %>%
+train_data %>%
   distinct(condition)
 ```
 
@@ -271,7 +258,7 @@ trees_clean %>%
 Here are the distributions of some categorical variables in this dataset:
 
 ```{r eval = FALSE}
-trees_clean %>%
+train_data %>%
   count(common_name) %>%
   arrange(desc(common_name))
 ```
@@ -280,7 +267,7 @@ trees_clean %>%
 
 ```{r}
 # Growth Space Type
-trees_clean %>%
+train_data %>%
   ggplot(aes(x = growth_space_type)) +
   geom_bar(fill = "#7cc560") +
   labs(title = "Distribution of Growth Space Type", 
@@ -291,7 +278,7 @@ trees_clean %>%
 
 ```{r}
 # Presence of Overhead Utilities
-trees_clean %>%
+train_data %>%
   ggplot(aes(x = overhead_utilities)) +
   geom_bar(fill = "#7cc560") +
   labs(title = "Distribution of Overhead Utilities Presence", 
@@ -302,7 +289,7 @@ trees_clean %>%
 
 ```{r}
 # Land Use
-trees_clean %>%
+train_data %>%
   ggplot(aes(y = land_use)) +
   geom_bar(fill = "#7cc560") +
   labs(title = "Distribution of Land Use", 
@@ -312,7 +299,7 @@ trees_clean %>%
 *The most common land use category for trees in this dataset is 'Residential', followed by 'Commercial/Industrial' and 'Vacant'. There are relatively very small numbers of trees in other types of land use, such as 'Water/Wetland', 'Golf Course', and 'Agriculture'.*
 
 ```{r}
-trees_clean %>%
+train_data %>%
   ggplot(aes(x = condition)) +
   geom_bar(fill = "#7cc560") +
   labs(title = "Distribution of Tree Condition", 
@@ -325,8 +312,7 @@ trees_clean %>%
 
 ```{r}
 #Height vs. Width
-trees_clean %>%
-  filter(height < 125) %>%
+train_data %>%
   ggplot(aes(x = width, y = height)) +
   geom_point(color = "#7cc560", alpha = 0.75) +
   labs(title = "Height vs. Width", subtitle = "(for height < 125)",
@@ -337,18 +323,13 @@ trees_clean %>%
 
 
 ```{r eval = FALSE}
-trees_clean %>%
+train_data %>%
   count(height)
 ```
 
 
 ```{r}
-trees_clean <- trees_clean %>%
-  mutate(growth_space_area = growth_space_length * growth_space_width) 
-```
-
-```{r}
-trees_clean %>%
+train_data %>%
   filter(stems < 200) %>%
   ggplot(aes(x = growth_space_area, y = stems)) +
     geom_point(color = "#7cc560", alpha = 0.75) + 
@@ -362,7 +343,7 @@ trees_clean %>%
 *This plot shows the relationship between a tree's number of stems and the area of its growth space. There doesn't seem to be a linear relationship between number of stems and growth space area, though a smaller growth space occasionally supports trees with more stems, and only a small number of trees have both high growth space area and many stems.*
 
 ```{r}
-trees_clean %>%
+train_data %>%
   mutate(growth_space_type2 = fct_lump_n(growth_space_type, 3)) %>%
   ggplot(aes(x = diameter_base_height, y = growth_space_type2)) +
   geom_boxplot(color = "#7cc560") +
@@ -373,15 +354,9 @@ trees_clean %>%
 
 *These boxplots show how the diameter at base height of trees differs across types of growth spaces. Trees in 'Open' and 'Tree Lawn' spaces have larger median diameters and larger Q1 and Q3 values compared to trees in 'Well/Pit' and 'Other' spaces. This could suggest that trees in more open spaces are able to grow larger in diameter, potentially due to fewer constraints. Additionally, all the boxplots are right-skewed with lots of high outliers.*
 
-```{r}
-trees_clean <- trees_clean %>%
-  mutate(condition = fct_relevel(condition, "Excellent", "Very Good", "Good", 
-                                 "Fair", "Poor", "Critical", "Dead"))
-```
-
 
 ```{r}
-trees_clean %>%
+train_data %>%
 ggplot(aes(y = overhead_utilities, fill = condition)) +
   geom_bar(position = "fill") + 
   labs(title = "Tree Condition by Presence of Overhead Utilities",
@@ -393,31 +368,6 @@ ggplot(aes(y = overhead_utilities, fill = condition)) +
 ```
 
 *The stacked bar graphs show the relationship between the presence of overhead utilities and tree condition. Since the distributions of tree condition are not exactly the same for trees with overhead utilities and trees without overhead utilities, there appears to be an association between the presence of overhead utilities and tree condition. There are different proportions of trees in "Poor", "Fair", and "Good" conditions in trees with and without overhead utilities, while there are similar proportions of trees in "Critical" and "Very Good" conditions. This may indicate that trees with average health status tend to be more affected by the presence of overhead utilities than trees with very good or very bad health status. For instance, when there are no overhead utilities, there are more trees in "Good" condition than trees in "Fair" condition, whereas when there are overhead utilities, there are more trees in "Fair" condition than trees in "Good" condition.*
-  
-## Splitting Data ##
-
-#### Filters ####
-- Stormwater elimination < 10000 gallons
-- Height < 125 feet
-- Add Overhead_numeric (may not need this anymore - was used for logistic regression)
--
-
-```{r data-filtering}
-trees_clean2 <- trees_clean %>%
-  filter(stormwater_elimination < 10000 & height < 125) %>%
-  mutate(overhead_numeric = if_else(overhead_utilities == "Yes", 1, 0),
-    overhead_numeric = as.factor(overhead_numeric))
-```
-
-```{r data-splitting}
-set.seed(1234)
-
-# 80/20 split 
-trees_split <- initial_split(trees_clean2, prop = 0.80)
-train_data <- training(trees_split)
-test_data <- testing(trees_split)
-
-```
 
 
 ## Exploring Research Questions ## (1,3,4,& 5)
@@ -452,9 +402,9 @@ varImpPlot(rf_stormwater, type=1)
 
 ```{r eval=FALSE}
 # Predict on test set
-test_pred_rf <- predict(rf_stormwater, test_data)
+test_pred_rf2 <- predict(rf_stormwater, test_data)
 
-confusionMatrix(test_pred_rf, test_data$stormwater_elimination)
+confusionMatrix(test_pred_rf2, test_data$stormwater_elimination)
 
 # Calculate RMSE?
 
@@ -474,7 +424,8 @@ rf_overhead <- randomForest(
   overhead_numeric ~ height + width + diameter_base_height + growth_space_area +
     stormwater_elimination + total_air_benefits,
   data = train_data,
-  ntree = 500
+  ntree = 500,
+  importance = TRUE
 )
 
 rf_overhead
@@ -483,26 +434,46 @@ rf_overhead
 #### Evaluate Model Performance ####
 
 ```{r}
+#Variable importance plot
+varImpPlot(rf_overhead, type=1)
+```
+
+```{r eval=FALSE}
 # Predict on test set
-test_pred_class <- predict(rf_overhead, test_data, type = "response")
+test_pred_rf <- predict(rf_overhead, test_data)
 
-# Confusion Matrix
-conf_mat <- table(test_data$overhead_numeric, test_pred_class)
-conf_mat
-
-# Compute Accuracy
-accuracy <- sum(diag(conf_mat)) / sum(conf_mat)
-print(paste("Accuracy:", round(accuracy, 3)))
-
-# ROC Curve & AUC
-roc_curve <- roc(test_data$overhead_numeric, as.numeric(test_pred_class))
-auc_value <- auc(roc_curve)
-print(paste("AUC:", round(auc_value, 3)))
-
-# Plot ROC Curve
-plot(roc_curve, col = "blue", main = "ROC Curve for Overhead Utilities Prediction")
+confusionMatrix(test_pred_rf, test_data$overhead_numeric, positive = "0")
 
 ```
+
+```{r}
+# Get predicted probabilities from the random forest model
+test_pred_rf_probs <- predict(rf_overhead, test_data, type = "prob")[, 2]  # Probabilities for the '1' class
+
+# Convert to tibble and rename the column to "pred"
+rf_pred <- as_tibble(test_pred_rf_probs) %>%
+  rename(pred = value)
+
+# Bind columns to join the predicted values with the response variable
+rf_pred <- rf_pred %>%
+  bind_cols(test_data %>% select(overhead_numeric))
+
+# Plot ROC curve
+rf_pred %>%
+  roc_curve(truth = overhead_numeric, pred, event_level = "second") %>% 
+  autoplot()
+
+# Calculate area under the ROC curve
+rf_pred %>%
+  roc_auc(truth = overhead_numeric, pred, event_level = "second")
+
+```
+
+
+
+
+
+
 
 
 ### 5. Is there a significant difference in the CO$_2$ benefits between trees located in residential areas versus vacant or industrial areas? ### 
