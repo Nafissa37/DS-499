@@ -442,38 +442,44 @@ varImpPlot(rf_overhead, type=1)
 # Predict on test set
 test_pred_rf <- predict(rf_overhead, test_data)
 
-confusionMatrix(test_pred_rf, test_data$overhead_numeric, positive = "0")
+confusionMatrix(test_pred_rf, test_data$overhead_numeric, positive = "1")
 
 ```
 
 ```{r}
-# Get predicted probabilities from the random forest model
-test_pred_rf_probs <- predict(rf_overhead, test_data, type = "prob")[, 2]  # Probabilities for the '1' class
+# Calculate predicted probability of delay for each test observation:
+pred_test <- predict(rf_overhead, test_data, type = "response")
 
-# Convert to tibble and rename the column to "pred"
-rf_pred <- as_tibble(test_pred_rf_probs) %>%
-  rename(pred = value)
+# Classify each tree as having overhead utilities (1) or not (0) and convert result to a factor
+# the predicted labels must be a factor before passing to confusionMatrix function
+pred_label <- ifelse(pred_test > 0.5, 1, 0)
+pred_label <- factor(pred_label, levels=c(0, 1))
 
-# Bind columns to join the predicted values with the response variable
-rf_pred <- rf_pred %>%
-  bind_cols(test_data %>% select(overhead_numeric))
+confusionMatrix(pred_label, test_data$overhead_numeric, positive = "1")
 
-# Plot ROC curve
-rf_pred %>%
-  roc_curve(truth = overhead_numeric, pred, event_level = "second") %>% 
+# the test dataset is called test_data; the response column is called overhead_numeric (0/1 variable)
+pred_test <- as_tibble(pred_test) %>%
+  rename(predicted = value)
+pred_test <- pred_test  %>%
+  bind_cols(test_data %>% dplyr::select(overhead_numeric))
+
+pred_test %>%
+  roc_curve(
+    truth = overhead_numeric,
+    predicted,
+    event_level = "second"
+  ) %>%
   autoplot()
 
-# Calculate area under the ROC curve
-rf_pred %>%
-  roc_auc(truth = overhead_numeric, pred, event_level = "second")
+# calculate area under the ROC curve
+pred_test %>%
+  roc_auc(
+    truth = overhead_numeric,
+    predicted,
+    event_level = "second"
+  )
 
 ```
-
-
-
-
-
-
 
 
 ### 5. Is there a significant difference in the CO$_2$ benefits between trees located in residential areas versus vacant or industrial areas? ### 
