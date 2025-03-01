@@ -448,7 +448,7 @@ confusionMatrix(test_pred_rf, test_data$overhead_numeric, positive = "1")
 
 ```{r}
 # Calculate predicted probability of delay for each test observation:
-pred_test <- predict(rf_overhead, test_data, type = "response")
+pred_test <- predict(rf_overhead, test_data, type = "prob")[, 2]
 
 # Classify each tree as having overhead utilities (1) or not (0) and convert result to a factor
 # the predicted labels must be a factor before passing to confusionMatrix function
