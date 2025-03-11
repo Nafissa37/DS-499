@@ -24,7 +24,7 @@ library(stringr)
 library(caret)
 library(broom)
 library(tidymodels)
-
+library(readr)
 library(pROC)
 library(randomForest)
 ```
@@ -377,7 +377,7 @@ We are now going to seek for answers to our questions of interest.
 ### 1. Which factors influence the amount of stormwater runoff absorbed by trees? (Predicting stormwater elimination amount) ###
 #### Fit Random Forest Model ####
 
-```{r}
+```{r eval=FALSE}
 rf_stormwater <- randomForest(
   stormwater_elimination ~ height + diameter_base_height + growth_space_type +
     overhead_utilities + condition,
@@ -385,9 +385,21 @@ rf_stormwater <- randomForest(
   ntree = 500,  #number of trees
   importance = TRUE
 )
+rf_stormwater
+
+#Save random forest model
+write_rds(rf_stormwater, "rf_stormwater.rds")
+
+```
+
+```{r}
+
+#Load saved model
+rf_stormwater <- read_rds("rf_stormwater.rds")
 
 rf_stormwater
 ```
+
 
 #### Evaluate Model Performance ####
 
@@ -419,7 +431,7 @@ confusionMatrix(test_pred_rf2, test_data$stormwater_elimination)
 
 ### 4. Do trees with overhead utilities grow differently or provide fewer benefits? (Classifying trees) ### 
 #### Fit Random Forest Model ####
-```{r}
+```{r eval=FALSE}
 rf_overhead <- randomForest(
   overhead_numeric ~ height + width + diameter_base_height + growth_space_area +
     stormwater_elimination + total_air_benefits,
@@ -429,7 +441,19 @@ rf_overhead <- randomForest(
 )
 
 rf_overhead
+
+#Save random forest model
+write_rds(rf_overhead, "rf_overhead.rds")
 ```
+
+```{r}
+
+#Load saved model
+rf_overhead <- read_rds("rf_overhead.rds")
+
+rf_overhead
+```
+
 
 #### Evaluate Model Performance ####
 
