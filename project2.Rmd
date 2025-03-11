@@ -26,7 +26,7 @@ library(broom)
 library(tidymodels)
 library(readr)
 library(pROC)
-library(randomForest)
+library(ranger)
 ```
 
 ```{r load-data}
@@ -80,6 +80,7 @@ trees_clean <- trees %>%
          total_air_benefits = air_quality_benfits_total_dollar_value,
          sequestred_CO2 = co2_benefits_sequestered_lbs,
          total_benefits = overall_benefits_dollar_value) %>%
+  select(-`_id`) %>%
   filter(stormwater_elimination < 10000 & height < 125) %>%
   mutate(overhead_numeric = if_else(overhead_utilities == "Yes", 1, 0),
     overhead_numeric = as.factor(overhead_numeric),
@@ -378,12 +379,18 @@ We are now going to seek for answers to our questions of interest.
 #### Fit Random Forest Model ####
 
 ```{r eval=FALSE}
-rf_stormwater <- randomForest(
-  stormwater_elimination ~ height + diameter_base_height + growth_space_type +
-    overhead_utilities + condition,
+
+#Number of features
+n_features <- length(setdiff(names(train_data), c("id", "address_number", "street", "stormwater_benefits", "stormwater_elimination")))
+
+
+rf_stormwater <- ranger(
+  formula = stormwater_elimination ~ . -id -address_number -street -stormwater_elimination -stormwater_benefits -longitude -latitude,
   data = train_data,
-  ntree = 500,  #number of trees
-  importance = TRUE
+  mtry = floor(n_features / 3), #number of features per split
+  respect.unordered.factors = "order",  
+  seed = 123,
+  importance = "impurity"
 )
 rf_stormwater
 
@@ -406,22 +413,17 @@ rf_stormwater
 
 ```{r}
 #Variable importance plot
-varImpPlot(rf_stormwater, type=1)
+vip::vip(rf_stormwater, num_features=10)
 ```
 
 *`Overhead_utilities` and `growth_space_type` have very low importance.*
 
 
-```{r eval=FALSE}
-# Predict on test set
-test_pred_rf2 <- predict(rf_stormwater, test_data)
-
-confusionMatrix(test_pred_rf2, test_data$stormwater_elimination)
-
-# Calculate RMSE?
-
+```{r}
+# get OOB RMSE
+(default_rmse <- sqrt(rf_stormwater$prediction.error))
 ```
-
+*A good? RMSE since the average stormwater elimination of a tree is 1115 gallons (per year?).*
 
 ### 2. Do certain tree species provide more ecological benefits, such as increased stormwater elimination or higher capture of CO$_2$? ### 
 
@@ -432,12 +434,16 @@ confusionMatrix(test_pred_rf2, test_data$stormwater_elimination)
 ### 4. Do trees with overhead utilities grow differently or provide fewer benefits? (Classifying trees) ### 
 #### Fit Random Forest Model ####
 ```{r eval=FALSE}
-rf_overhead <- randomForest(
-  overhead_numeric ~ height + width + diameter_base_height + growth_space_area +
-    stormwater_elimination + total_air_benefits,
+#Number of features
+n_features <- length(setdiff(names(train_data), c("id", "address_number", "street", "overhead_utilities", "overhead_numeric")))
+
+rf_overhead <- ranger(
+  formula = overhead_numeric ~ . -id -address_number -street -overhead_utilities -overhead_numeric -longitude -latitude,
   data = train_data,
-  ntree = 500,
-  importance = TRUE
+  # mtry = floor(n_features / 3),  #We get the default for classification (sqrt(n_features))
+  respect.unordered.factors = "order",  
+  seed = 123,
+  importance = "impurity"  
 )
 
 rf_overhead
@@ -459,18 +465,25 @@ rf_overhead
 
 ```{r}
 #Variable importance plot
-varImpPlot(rf_overhead, type=1)
+vip::vip(rf_overhead, num_features=10)
 ```
 
 ```{r eval=FALSE}
 # Predict on test set
 test_pred_rf <- predict(rf_overhead, test_data)
 
+# Convert predictions to a factor with the same levels as the actual data
+test_pred_rf <- factor(test_pred_rf$predictions, levels = c(0, 1))
+
+# Convert the actual labels to a factor as well
+test_data$overhead_numeric <- factor(test_data$overhead_numeric, levels = c(0, 1))
+
 confusionMatrix(test_pred_rf, test_data$overhead_numeric, positive = "1")
 
 ```
 
-```{r}
+```{r eval=FALSE}
+#NOT WORKING
 # Calculate predicted probability of delay for each test observation:
 pred_test <- predict(rf_overhead, test_data, type = "prob")[, 2]
 
@@ -504,6 +517,8 @@ pred_test %>%
   )
 
 ```
+
+
 
 
 ### 5. Is there a significant difference in the CO$_2$ benefits between trees located in residential areas versus vacant or industrial areas? ### 
