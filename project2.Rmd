@@ -1,7 +1,7 @@
 ---
 title: "Pittsburgh Trees"
 author: "Nafissa Bia"
-date: "December 3, 2024"
+date: "May 6, 2025"
 output:
     prettydoc::html_pretty:
     theme: hpstr
@@ -437,27 +437,39 @@ vip::vip(rf_stormwater, num_features=10)
 #Number of features
 n_features <- length(setdiff(names(train_data), c("id", "address_number", "street", "overhead_utilities", "overhead_numeric")))
 
-rf_overhead <- ranger(
+rf_overhead1 <- ranger(
   formula = overhead_numeric ~ . -id -address_number -street -overhead_utilities -overhead_numeric -longitude -latitude,
   data = train_data,
   # mtry = floor(n_features / 3),  #We get the default for classification (sqrt(n_features))
   respect.unordered.factors = "order",  
   seed = 123,
-  importance = "impurity"  
+  importance = "impurity",
 )
 
-rf_overhead
+rf_overhead2 <- ranger(
+  formula = overhead_numeric ~ . -id -address_number -street -overhead_utilities -overhead_numeric -longitude -latitude,
+  data = train_data,
+  # mtry = floor(n_features / 3),  #We get the default for classification (sqrt(n_features))
+  respect.unordered.factors = "order",  
+  seed = 123,
+  importance = "impurity",
+  probability = TRUE
+)
+
+rf_overhead1
+rf_overhead2
 
 #Save random forest model
-write_rds(rf_overhead, "rf_overhead.rds")
+write_rds(rf_overhead1, "rf_overhead1.rds")
+write_rds(rf_overhead2, "rf_overhead2.rds")
 ```
 
 ```{r}
 
 #Load saved model
-rf_overhead <- read_rds("rf_overhead.rds")
+rf_overhead1 <- read_rds("rf_overhead1.rds")
+rf_overhead2 <- read_rds("rf_overhead2.rds")
 
-rf_overhead
 ```
 
 
@@ -465,60 +477,39 @@ rf_overhead
 
 ```{r}
 #Variable importance plot
-vip::vip(rf_overhead, num_features=10)
+vip::vip(rf_overhead1, num_features=10)
 ```
 
-```{r eval=FALSE}
-# Predict on test set
-test_pred_rf <- predict(rf_overhead, test_data)
-
-# Convert predictions to a factor with the same levels as the actual data
-test_pred_rf <- factor(test_pred_rf$predictions, levels = c(0, 1))
-
-# Convert the actual labels to a factor as well
-test_data$overhead_numeric <- factor(test_data$overhead_numeric, levels = c(0, 1))
-
-confusionMatrix(test_pred_rf, test_data$overhead_numeric, positive = "1")
+```{r}
+pred_test <- predict(rf_overhead1, test_data, type="response")
+confusionMatrix(pred_test$predictions, test_data$overhead_numeric, positive = "1")
 
 ```
 
-```{r eval=FALSE}
-#NOT WORKING
-# Calculate predicted probability of delay for each test observation:
-pred_test <- predict(rf_overhead, test_data, type = "prob")[, 2]
+```{r}
+# Calculate predicted probability of overhead presence for each test observation:
+pred_probs <- predict(rf_overhead2, test_data)$predictions[, 2]
 
-# Classify each tree as having overhead utilities (1) or not (0) and convert result to a factor
-# the predicted labels must be a factor before passing to confusionMatrix function
-pred_label <- ifelse(pred_test > 0.5, 1, 0)
-pred_label <- factor(pred_label, levels=c(0, 1))
+# Convert to tibble and rename column
+pred_test <- tibble(predicted = pred_probs) %>%
+  bind_cols(test_data %>% select(overhead_numeric))
 
-confusionMatrix(pred_label, test_data$overhead_numeric, positive = "1")
-
-# the test dataset is called test_data; the response column is called overhead_numeric (0/1 variable)
-pred_test <- as_tibble(pred_test) %>%
-  rename(predicted = value)
-pred_test <- pred_test  %>%
-  bind_cols(test_data %>% dplyr::select(overhead_numeric))
-
+# Generate ROC curve
 pred_test %>%
   roc_curve(
     truth = overhead_numeric,
-    predicted,
+    predicted,  
     event_level = "second"
   ) %>%
   autoplot()
 
-# calculate area under the ROC curve
+# Calculate area under the ROC curve
 pred_test %>%
-  roc_auc(
-    truth = overhead_numeric,
-    predicted,
-    event_level = "second"
-  )
+  roc_auc(truth = overhead_numeric, predicted, event_level = "second")
 
 ```
 
-
+*Slightly higher AUC than with logistic regression; AUC higher than 0.5.*
 
 
 ### 5. Is there a significant difference in the CO$_2$ benefits between trees located in residential areas versus vacant or industrial areas? ### 
