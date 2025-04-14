@@ -27,6 +27,8 @@ library(tidymodels)
 library(readr)
 library(pROC)
 library(ranger)
+library(yardstick)
+library(rlang)
 ```
 
 ```{r load-data}
@@ -381,11 +383,11 @@ We are now going to seek for answers to our questions of interest.
 ```{r eval=FALSE}
 
 #Number of features
-n_features <- length(setdiff(names(train_data), c("id", "address_number", "street", "stormwater_benefits", "stormwater_elimination")))
+n_features <- length(setdiff(names(train_data), c("id", "address_number", "street", "longitude", "latitude", "stormwater_elimination", "stormwater_benefits")))
 
 
 rf_stormwater <- ranger(
-  formula = stormwater_elimination ~ . -id -address_number -street -stormwater_elimination -stormwater_benefits -longitude -latitude,
+  formula = stormwater_elimination ~ . -id -address_number -street -longitude -latitude -stormwater_benefits,
   data = train_data,
   mtry = floor(n_features / 3), #number of features per split
   respect.unordered.factors = "order",  
@@ -429,16 +431,77 @@ vip::vip(rf_stormwater, num_features=10)
 
 
 ### 3. Can tree dimensions predict their impact on air quality? ### 
+#### Fit Random Forest Model ####
+
+```{r eval=FALSE}
+# Find all columns that start with "air"
+air_benefits_columns <- grep("^air", names(train_data), value = TRUE)
+CO2_benefits_columns <- grep("^co2", names(train_data), value = TRUE)
+
+#Number of features
+n_features <- length(setdiff(names(train_data), c("id", "address_number", "street", "longitude", "latitude", "total_air_benefits", air_benefits_columns, "sequestred_CO2", CO2_benefits_columns)))
+
+
+#Remove appropriate columns from data set
+#("-air_benefits_columns" in 'formula' doesn't work)
+#similar issue with 'select'
+#Also remove columns related to CO2 benefits
+
+train_data_air <- train_data[, !(names(train_data) %in% c("id", "address_number", "street", "longitude", "latitude", "sequestred_CO2", air_benefits_columns, CO2_benefits_columns))]
+  
+rf_air_benefits <- ranger(
+  formula = total_air_benefits ~ .,
+  data = train_data_air,
+  mtry = floor(n_features / 3), #number of features per split for regression
+  respect.unordered.factors = "order",  
+  seed = 123,
+  importance = "impurity"
+)
+rf_air_benefits
+
+#Save random forest model
+write_rds(rf_air_benefits, "rf_air_benefits.rds")
+
+```
+
+```{r}
+
+#Load saved model
+rf_air_benefits <- read_rds("rf_air_benefits.rds")
+
+rf_air_benefits
+```
+
+
+#### Evaluate Model Performance ####
+
+
+```{r}
+#Variable importance plot
+vip::vip(rf_air_benefits, num_features=10)
+```
+
+*Some features related to tree dimensions, such as `diameter_base_height`, `height`, or `property_value_benefits_leaf_surface_area`, have moderate importance in predicting their impact on air quality.*
+
+
+```{r}
+# get OOB RMSE
+(default_rmse <- sqrt(rf_air_benefits$prediction.error))
+```
+*A good? RMSE since the average monetary value of the total air benefits provided by a tree is approximately $7.*
+```{r eval=FALSE}
+mean(train_data$total_air_benefits)
+```
 
 
 ### 4. Do trees with overhead utilities grow differently or provide fewer benefits? (Classifying trees) ### 
 #### Fit Random Forest Model ####
 ```{r eval=FALSE}
 #Number of features
-n_features <- length(setdiff(names(train_data), c("id", "address_number", "street", "overhead_utilities", "overhead_numeric")))
+n_features <- length(setdiff(names(train_data), c("id", "address_number", "street", "longitude", "latitude", "overhead_utilities", "overhead_numeric")))
 
 rf_overhead1 <- ranger(
-  formula = overhead_numeric ~ . -id -address_number -street -overhead_utilities -overhead_numeric -longitude -latitude,
+  formula = overhead_numeric ~ . -id -address_number -street -longitude -latitude -overhead_utilities,
   data = train_data,
   # mtry = floor(n_features / 3),  #We get the default for classification (sqrt(n_features))
   respect.unordered.factors = "order",  
@@ -447,7 +510,7 @@ rf_overhead1 <- ranger(
 )
 
 rf_overhead2 <- ranger(
-  formula = overhead_numeric ~ . -id -address_number -street -overhead_utilities -overhead_numeric -longitude -latitude,
+  formula = overhead_numeric ~ . -id -address_number -street -longitude -latitude -overhead_utilities,
   data = train_data,
   # mtry = floor(n_features / 3),  #We get the default for classification (sqrt(n_features))
   respect.unordered.factors = "order",  
@@ -513,6 +576,97 @@ pred_test %>%
 
 
 ### 5. Is there a significant difference in the CO$_2$ benefits between trees located in residential areas versus vacant or industrial areas? ### 
+#### Fit Random Forest Model ####
+```{r eval=FALSE}
+
+train_data$land_use <- as.factor(train_data$land_use)
+test_data$land_use <- as.factor(test_data$land_use)
+
+#Number of features
+n_features <- length(setdiff(names(train_data), c("id", "address_number", "street", "longitude", "latitude", "land_use")))
+
+#Remove neighborhood as well?
+rf_land_use1 <- ranger(
+  formula = land_use ~ . -id -address_number -street -longitude -latitude,
+  data = train_data,
+  # mtry = floor(n_features / 3),  #We get the default for classification (sqrt(n_features))
+  respect.unordered.factors = "order",  
+  seed = 123,
+  importance = "impurity",
+)
+
+rf_land_use2 <- ranger(
+  formula = land_use ~ . -id -address_number -street -longitude -latitude,
+  data = train_data,
+  # mtry = floor(n_features / 3),  #We get the default for classification (sqrt(n_features))
+  respect.unordered.factors = "order",  
+  seed = 123,
+  importance = "impurity",
+  probability = TRUE
+)
+
+rf_land_use1
+rf_land_use2
+
+#Save random forest model
+write_rds(rf_land_use1, "rf_land_use1.rds")
+write_rds(rf_land_use2, "rf_land_use2.rds")
+```
+
+```{r}
+
+#Load saved model
+rf_land_use1 <- read_rds("rf_land_use1.rds")
+rf_land_use2 <- read_rds("rf_land_use2.rds")
+
+```
+
+
+#### Evaluate Model Performance ####
+
+```{r}
+#Variable importance plot
+vip::vip(rf_land_use1, num_features=10)
+```
+
+```{r}
+pred_test <- predict(rf_land_use1, test_data, type="response")
+
+# Align factor levels before evaluation (since land_use was re-leveled before fitting the rf model)
+preds <- factor(pred_test$predictions, levels = levels(test_data$land_use))
+actuals <- factor(test_data$land_use, levels = levels(test_data$land_use))
+
+confusionMatrix(preds, actuals)
+
+```
+
+```{r}
+#WIP
+
+# Calculate predicted probability of overhead presence for each test observation:
+pred_probs <- predict(rf_land_use2, test_data)$predictions[, 2]
+
+# Convert to tibble and rename column
+pred_test <- tibble(predicted = pred_probs) %>%
+  bind_cols(test_data %>% select(land_use))
+
+# Generate ROC curve
+pred_test %>%
+  roc_curve(
+    truth = land_use,
+    predicted,  
+    event_level = "second"
+  ) %>%
+  autoplot()
+
+# Calculate area under the ROC curve
+pred_test %>%
+  roc_auc(truth = land_use, predicted, event_level = "second")
+
+```
+
+
+*(WIP) Slightly higher AUC than with logistic regression; AUC higher than 0.5.*
 
 
 ### 6. How are trees distributed across different neighborhoods or wards in Pittsburgh? ### 
