@@ -576,29 +576,16 @@ rf_overhead1 <- ranger(
   importance = "impurity",
 )
 
-rf_overhead2 <- ranger(
-  formula = overhead_numeric ~ . -id -address_number -street -longitude -latitude -overhead_utilities,
-  data = train_data,
-  # mtry = floor(n_features / 3),  #We get the default for classification (sqrt(n_features))
-  respect.unordered.factors = "order",  
-  seed = 123,
-  importance = "impurity",
-  probability = TRUE
-)
-
 rf_overhead1
-rf_overhead2
 
 #Save random forest model
 write_rds(rf_overhead1, "rf_overhead1.rds")
-write_rds(rf_overhead2, "rf_overhead2.rds")
 ```
 
 ```{r}
 
 #Load saved model
 rf_overhead1 <- read_rds("rf_overhead1.rds")
-rf_overhead2 <- read_rds("rf_overhead2.rds")
 
 ```
 
@@ -616,30 +603,6 @@ confusionMatrix(pred_test$predictions, test_data$overhead_numeric, positive = "1
 
 ```
 
-```{r}
-# Calculate predicted probability of overhead presence for each test observation:
-pred_probs <- predict(rf_overhead2, test_data)$predictions[, 2]
-
-# Convert to tibble and rename column
-pred_test <- tibble(predicted = pred_probs) %>%
-  bind_cols(test_data %>% select(overhead_numeric))
-
-# Generate ROC curve
-pred_test %>%
-  roc_curve(
-    truth = overhead_numeric,
-    predicted,  
-    event_level = "second"
-  ) %>%
-  autoplot()
-
-# Calculate area under the ROC curve
-pred_test %>%
-  roc_auc(truth = overhead_numeric, predicted, event_level = "second")
-
-```
-
-*Slightly higher AUC than with logistic regression; AUC higher than 0.5.*
 
 
 ### 4. Is there a significant difference in the CO$_2$ benefits between trees located in residential areas versus vacant or industrial areas? ### 
@@ -676,29 +639,16 @@ rf_land_use1 <- ranger(
   importance = "impurity",
 )
 
-rf_land_use2 <- ranger(
-  formula = land_use ~ . -id -address_number -street -longitude -latitude,
-  data = train_data_land_use,
-  # mtry = floor(n_features / 3),  #We get the default for classification (sqrt(n_features))
-  respect.unordered.factors = "order",  
-  seed = 123,
-  importance = "impurity",
-  probability = TRUE
-)
-
 rf_land_use1
-rf_land_use2
 
 #Save random forest model
 write_rds(rf_land_use1, "rf_land_use1.rds")
-write_rds(rf_land_use2, "rf_land_use2.rds")
 ```
 
 ```{r}
 
 #Load saved model
 rf_land_use1 <- read_rds("rf_land_use1.rds")
-rf_land_use2 <- read_rds("rf_land_use2.rds")
 
 ```
 
@@ -727,33 +677,6 @@ confusionMatrix(preds, actuals)
 
 
 ```
-
-```{r}
-# Calculate predicted probability of land use type for each test observation:
-pred_probs <- predict(rf_land_use2, test_data_land_use)$predictions[, 2]
-
-# Convert to tibble and make sure land_use is a factor
-pred_test <- tibble(predicted = pred_probs) %>%
-  bind_cols(test_data_land_use %>% select(land_use) %>%
-              mutate(land_use = factor(land_use)))
-
-# Generate ROC curve
-pred_test %>%
-  roc_curve(
-    truth = land_use,
-    predicted,  
-    event_level = "second"
-  ) %>%
-  autoplot()
-
-# Calculate area under the ROC curve
-pred_test %>%
-  roc_auc(truth = land_use, predicted, event_level = "second")
-
-```
-
-
-*Slightly higher AUC than with logistic regression; AUC higher than 0.5.*
 
 
 ## Conclusion (WIP)##
