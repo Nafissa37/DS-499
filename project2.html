@@ -108,38 +108,21 @@ condition of Pittsburgh’s urban forest.</p>
 <p>After an initial study of the variables contained in this dataset,
 here are a few questions of interest:</p>
 <ul>
-<li>Which factors influence the amount of stormwater runoff absorbed by
-trees?</li>
+<li>Which factors can help predict the amount of stormwater runoff
+absorbed by trees?</li>
 <li>Can tree dimensions predict their impact on air quality?</li>
-<li>Do trees with overhead utilities grow differently or provide fewer
-benefits?</li>
-<li>Is there a significant difference in the CO<span class="math inline">\(_2\)</span> benefits between trees located in
-residential areas versus vacant or industrial areas?</li>
+<li>Can we classify trees as having overhead utilities or not based on
+their dimensions or the benefits they provide?</li>
+<li>Can the CO<span class="math inline">\(_2\)</span> benefits provided
+by a tree help classify the tree as being located in a residential area
+versus an industrial area?</li>
 </ul>
 </div>
 <div id="splitting-data" class="section level2">
 <h2>Splitting Data</h2>
-<div id="changes-to-data-before-splitting" class="section level4">
-<h4>Changes to Data Before Splitting</h4>
-<ul>
-<li>Filtering
-<ul>
-<li>Stormwater elimination &lt; 10000 gallons</li>
-<li>Height &lt; 125 feet</li>
-<li>Add Overhead_numeric (may not need this anymore - was used for
-logistic regression)</li>
-<li>Omit NA values</li>
-</ul></li>
-<li>Renaming Columns</li>
-<li>Value Names and Orders
-<ul>
-<li>Re-leveled <code>Condition</code></li>
-</ul></li>
-</ul>
 </div>
-</div>
-<div id="exploratory-data-analysis-wip" class="section level2">
-<h2>Exploratory Data Analysis (WIP)</h2>
+<div id="exploratory-data-analysis" class="section level2">
+<h2>Exploratory Data Analysis</h2>
 <ul>
 <li><p><strong>Check for missing values</strong>: Some NA values were
 entered as ‘N/A’, so that was corrected when reading in the data. Using
@@ -172,19 +155,6 @@ canopy size, limiting benefits like carbon sequestration and stormwater
 management. Additionally, high maintenance costs, including pruning or
 pest control, may outweigh their environmental contributions, leading to
 a net negative value in the benefit model.</p>
-<ul>
-<li><strong>Transformations</strong>: Since some of the quantitative
-variables, like <code>height</code> and <code>width</code>, are very
-right-skewed, using a log transformation may yield better results on the
-graphs:</li>
-</ul>
-<p><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAqAAAAHgCAMAAABNUi8GAAABF1BMVEUAAAAAADoAAGYAOjoAOmYAOpAAZrYzMzM6AAA6ADo6AGY6OgA6Ojo6OmY6OpA6ZmY6ZpA6ZrY6kLY6kNtNTU1NTW5NTY5NbqtNjshmAABmADpmOgBmOmZmZmZmkJBmkNtmtrZmtttmtv9uTU1uTW5uTY5ubo5ubqtuq+R8xWCOTU2OTW6OTY6Obk2OyP+QOgCQZgCQZjqQkGaQtpCQttuQ27aQ29uQ2/+rbk2rbm6ryKur5OSr5P+2ZgC2Zjq2kDq2tpC225C229u22/+2/9u2///Ijk3I///bkDrbkGbbtmbbtpDb27bb/7bb/9vb///kq27k///r6+v/tmb/yI7/25D/27b/5Kv//7b//8j//9v//+T////1VJhXAAAACXBIWXMAAA7DAAAOwwHHb6hkAAAQ20lEQVR4nO3ai3Ya1wGF4ZFjUTm9xAlKU1ltUsu9WOlFrdPWaRua1K4SuRfLMcaS8bz/c/ScGWYYxGjEDmJzFvr3WikSoB9kfxkG0ixnLOFl634CjHUNoCzpAZQlPYCypAdQlvQAypIeQFnSAyhLek2gJ1mxHz4NX4+Ptk+nt4x+ejz5Kl5/vtebD8W7zP5Qx/6RZb14z8HW4/KBi58LP/68LoyPemKUbeJagGbZwUWgJ7euBBrvsqilYXiMXvnFQbwYZAXU0B3PAlWibCM3A7RgOH62Ux7X5m6pdinQRTdxWZXO9z7e6zevjgMoi5sHGqH0SxbjP2bZ1v3wdTji9YOYk+zWk/IIOtzJbj+tjrPhluou8dvX+1l141ffz7Y+qfvVDYNw3/Khyh8Ybv0laoyPX17x71B/0oj+b7+ZYTdpbUCjkvKf8gW/gvLOTlacJJ7vha+y+LLcBnQYbytvrE8YitU3TIGWD3myfVodKotCcapxe7+O3t5vZtiNWhvQfFAeykY775/mo536pTYcWCfnoNkHp+Mvw2lkDXT6ahzudr982xO+6kVtk/OB6Q2N1/LRzkHx4/Ga873+JL/1p/z1UTZ93PAjz7KW0wq2+esG+s7HT+pbxkfx5lJQybJ6RZ4BWoAu3p+XP1CfsE5vaACNKCPSeBmvLQv96u7Tx20972Wbvy6gxWtxdvdp881KCbRf3D0abAFa4BvO3Bg3vaH5bmiwfTqMDzuYvsyXt154k1Rn2M1a1zlonv9nvzxdXB3QoHMQ7xZ+fNDLAcourPNdfNx//xC8XAQasRQvvYP65bftJf4C0JaX+HDtz/f608vpS/xMFKA3dq2fg9avtR+c5uMvg6iTxjv24k1SEBzfJIWTgE/iu5heXt+l+SZpRlbrm6Rw7Xt3Hk8vJ2+S7l+IAvTGruu/JE0+Jyo/+Ok3gb63M/mkaDj5RCif3qXxMdOsrPqGmU/kTyafOA2y6j1YWxSgN3XzQLfu1v8tvvig/v3A43w/6z1vnoMGbD+Kd8uf7WR3n0c807uMph/Uz8qqbpgBOpx8flRe1qe+t/81GwXoDR3/byaW9ADKkh5AWdIDKEt6AGVJD6As6QGUJT2AsqQHUJb0AMqSXgPoy85dcfOiu6ZMYk+HzLV3AErGkwEomaQzACWTdAagZJLOAJRM0pnrA8pYeuMISma1GV7iySSdASiZpDMAJZN0BqBkks4AlEzSGYCSSToDUDJJZwBKJukMQMkknQEomaQzALVkDle0tf5SlgxALZnDvGWHrdcqA+ilPwVQKQNQcwegWgag5g5AtQxAzR2AahmAmjsA1TIANXcAqmUAau4AVMsA1NwBqJYBqLkDUC0DUHMHoFoGoOYOQLUMQM0dgGoZgJo7ANUyADV3AKplAGruAFTLANTcAaiWAai5A1AtA1BzB6BaBqDmDkC1DEDNHYBqGYCaOwDVMgA1dwCqZQBq7gBUywDU3AGolgGouQNQLQNQcwegWgag5g5AtQxAzR2AahmAmjsA1TIANXcAqmUAau4AVMsA1NwBqJYBqLkDUC0DUHMHoFoGoOYOQLUMQM2dFqCsY6sCumxg48cRdLFxBDV3AKplAGruAFTLANTcAaiWAai5A1AtA1BzB6BaBqDmDkC1DEDNHYBqGYCaOwDVMgA1dwCqZQBq7gBUywDU3AGolgGouQNQLQNQcwegWgag5g5AtQxAzR2AahmAmjsA1TIANXcAqmUAau4AVMsA1NwBqJYBqLkDUC0DUHMHoFoGoOYOQLUMQM0dgGoZgJo7ANUyADV3AKplAGruAFTLANTcAaiWAai5A1AtA1BzB6BaBqDmDkC1DEDNHYBqGYCaOwDVMgA1dwCqZQBq7gBUywDU3AGolgGouQNQLQNQcwegWgag5g5AtQxAzR2AahmAmjsA1TIANXcAqmUAau4AVMsA1NwBqJYBqLkDUC0DUHMHoFoGoOYOQLUMQM0dgGoZgJo7LUBZx1YFdNnAxo8j6GLjCGruAFTLANTcAaiWAai5A1AtA1BzB6BaBqDmDkC1DEDNHYBqGYCaOwDVMgA1dwCqZQBq7gBUywDU3AGolgGouQNQLQNQcwegWgag5g5AtQxAzR2AahmAmjsA1TIANXcAqmUAau4AVMsA1NwBqJYBqLkDUC0DUHMHoFoGoOYOQLUMQM0dgGoZgJo7ANUyADV3AKplAGruAFTLANTcAaiWAai5A1AtA1BzB6BaBqDmDkC1DEDNHYBqGYCaOwDVMgA1dwCqZQBq7gBUywDU3AGolgGouQNQLQNQcwegWgag5g5AtQxAzR2AahmAmjsA1TIANXcAqmUAau4AVMsA1NwBqJYBqLkDUC0DUHMHoFoGoOYOQLUMQM0dgGoZgJo7ANUyADV3WoCyjq0K6LKBjR9H0MXGEdTcAaiWAai5A1AtA1BzB6BaBqDmDkC1DEDNHYBqGYCaOwDVMgA1dwCqZQBq7gBUywDU3AGolgGouQNQLQNQcwegWgag5g5AtQxAzR2AahmAmjsA1TIANXcAqmUAau4AVMsA1NwBqJYBqLkDUC0DUHMHoFoGoOYOQLUMQM0dgGoZgJo7ANUyADV3AKplAGruAFTLANTcAaiWAai5A1AtA1BzB6BaBqDmDkC1DEDNHYBqGYCaOwDVMgA1dwCqZQBq7gBUywDU3AGolgGouQNQLQNQcwegWgag5g5AtQxAzR2AahmAmjsA1TIANXcAqmUAau4AVMsA1NwBqJYBqLkDUC0DUHMHoFoGoOYOQLUMQM0dgGoZgJo7KtDDw8PO2xd+3Gt6CIBewy81+dXin3v8n/qL+ru2f16+nL8oN1ts/a7x9RV/3SLQ2SewxC5/FO0hAHoNv1T5m4mr/6aaFzNC57S23XLVX3cL0M4/yLhl/zZW9xDqH/J3WPvDLvH7up74Vb+U/jMtF9NcfvFv8pJbZu90+TiCLjaOoNXWdwS96teQfu1LH/eaHgKg1/BLTX61TTgH3ZC3ht89s8FAV5zhYyZLBqDmDkC1DEDNHYBqGYCaOwDVMgA1dwCqZQBq7gBUywDU3AGolgGouQNQLQNQcwegWgag5g5AtQxAzR2AahmAmjsA1TIANXcAqmUAau4AVMsA1NwBqJYBqLkDUC0DUHMHoFoGoOYOQLUMQM0dgGoZgJo7ANUyADV3AKplAGruAFTLANTcAaiWAai5A1AtA1BzB6BaBqDmDkC1DEDNHYBqGYCaOwDVMgA1dwCqZQBq7gBUywDU3AGolgGouQNQLQNQcwegWgag5g5AtQxAzR2AahmAmjsA1TIANXcAqmUAau4AVMsA1NwBqJYBqLkDUC0DUHMHoFoGoOYOQLUMQM0dgGoZgJo7ANUyADV3WoCyjq0K6LKBjR9H0MXGEdTcAaiWAai5A1AtA1BzB6BaBqDmDkC1DEDNHYBqGYCaOwDVMgA1dwCqZQBq7gBUywDU3AGolgGouQNQLQNQcwegWgag5g5AtQxAzR2AahmAmjsA1TIANXcAqmUAau4AVMsA1NwBqJYBqLkDUC0DUHMHoFoGoOYOQLUMQM0dgGoZgJo7ANUyADV3AKplAGruAFTLANTcAaiWAai5A1AtA1BzB6BaBqDmDkC1DEDNHYBqGYCaOwDVMgA1dwCqZQBq7gBUywDU3AGolgGouQNQLQNQcwegWgag5g5AtQxAzR2AahmAmjsA1TIANXcAqmUAau4AVMsA1NwBqJYBqLkDUC0DUHMHoFoGoOYOQLUMQM0dgGoZgJo7ANUyADV3AKplAGrutABlHVsV0GUDGz+OoIuNI6i5A1AtA1BzB6BaBqDmDkC1DEDNHYBqGYCaOwDVMgA1dwCqZQBq7gBUywDU3AGolgGouQNQLQNQcwegWgag5g5AtQxAzR2AahmAmjsA1TIANXcAqmUAau4AVMsA1NwBqJYBqLkDUC0DUHMHoFoGoOYOQLUMQM0dgGoZgJo7ANUyADV3AKplAGruAFTLANTcAaiWAai5A1AtA1BzB6BaBqDmDkC1DEDNHYBqGYCaOwDVMgA1dwCqZQBq7gBUywDU3AGolgGouQNQLQNQcwegWgag5g5AtQxAzR2AahmAmjsA1TIANXcAqmUAau4AVMsA1NwBqJYBqLkDUC0DUHMHoFoGoOYOQLUMQM0dgGoZgJo7ANUyADV3AKplAGruAFTLANTcaQHKOrYqoMsGNn4cQRcbR1BzB6BaBqDmDkC1DEDNHYBqGYCaOwDVMgA1dwCqZQBq7gBUywDU3AGolgGouQNQLQNQcwegWgag5g5AtQxAzR2AahmAmjsA1TIANXcAqmUAau4AVMsA1NwBqJYBqLkDUC0DUHMHoFoGoOYOQLUMQM0dgGoZgJo7ANUyADV3AKplAGruAFTLANTcAaiWAai5A1AtA1BzB6BaBqDmDkC1DEDNHYBqGYCaOwDVMgA1dwCqZQBq7gBUywDU3AGolgGouQNQLQNQcwegWgag5g5AtQxAzR2AahmAmjsA1TKHq9l6fylLBqBkks4AlEzSGYCSSToDUDJJZwBKJukMQMkknQEomaQzACWTdAagZJLOAJRM0hmAkkk6c31AGUtvHEHJrDbDSzyZpDMAJZN0BqBkks4AlEzSGde7+O8tekfP0no6PJuOLfd0AHod49l0DKDrH8+mYwBd/3g2HTMBZWwdAyhLegBlSQ+gLOkBlCW9xYC++XT3o29X/Eyknf3ym3U/hXpnD3Z3f7/uJ1Hv1e7uj9P5swl7+/lSfzgLAY2P8eInyzzMNe9VQn8Jb37zRX72iy/W/TQmi//mJvVXlb9Y7t/ehYC++e03SR2zvv7wb+k8m1eRw9fpHELTennJz371u9UDPfv1t8WBIp0l9XeQJ/aHk9IR9O1f/254iX/1EUC79vbzh+t+CtOdPfjwi3U/h+lePHScg3IE7dybTxPymSd1PA9yHEBTOwdNC+jZg5ROQOPSOSN+sRu3zL+/C76Lf5jUiU1SQNPymd7ZmOMIyuegHSsPEskgDU8npXNQE1DG1jSAsqQHUJb0AMqSHkBZ0gMoS3oAndv4qH/1nU6yrcfhYrB9WnzTK36uN7rzuLh1eOs4f/00r76Na37dCMws/Ai7MIDObRGg53sHxWWUGH7gZ9Hp+V79c+HqCPIiypZAcx13v7kD6NwWAVpZGu0EZ+f3/nwvfDucHhKvBtp2E0BbBtC51UDHR1nx2n2+l2199u5x47rRTnlLed/h9vN4cbJ9GonFez+69c9wj/7ozqMsy8pDZbhpdOezncm3ZSDGykNwvIzXLXByccMG0LlVQMM5ZfFPfOk+37t13LyuPtgFlfmgn58EruEiXF3duziC7oRbT8qfjEBnvy1CMVBdcgRtGUDnVgEtzi/D/xSXE1fVdbWl8PX46CAfvXsczyrD1dW9S6AH9Qt3AXTm2zIWfqy6BGjLADq3Gmh85xPQnBSX5Ut8dV1t6fze43hT5BUuGveuz0EbQGe/DW/ki/WrS4C2DKBzk4CGF/b48j65EIEWn1Hl9SVAWwbQudVA47vy6iV+OHmJn1w3tXTSG/Tri+olvvku/nKg1dv+6hKgLQPo3KQ3SfnoB8WX5UXxJqlX3HtyStoFdHwUDp1BZ3XZ9tnojR9A5xY/9ImnhDMfMz261fyYqQH0fK94gS6Q5dOPmY7zQda7AmgR22pcDsrPrlhjAF1sw8l5IjMPoFcuniIWH1WyNQygVy9+DITPNQ2gLOkBlCU9gLKkB1CW9ADKkh5AWdIDKEt6/wc37ofDKBNdigAAAABJRU5ErkJggg==" /><!-- --></p>
-<p><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAqAAAAHgCAMAAABNUi8GAAABCFBMVEUAAAAAADoAAGYAOjoAOmYAOpAAZpAAZrYzMzM6AAA6ADo6AGY6OgA6OmY6OpA6ZmY6ZpA6ZrY6kLY6kNtNTU1NTW5NTY5NbqtNjshmAABmOgBmOmZmkJBmkLZmkNtmtpBmtttmtv9uTU1uTW5uTY5ubo5ubqtuq+R8xWCOTU2OTW6OTY6Obk2OyP+QOgCQZgCQZjqQkGaQtpCQttuQ2/+rbk2rbm6ryKur5OSr5P+2ZgC2Zjq2kDq2tpC229u22/+2///Ijk3I///bkDrbkGbbtmbbtpDb27bb/7bb/9vb///kq27k///r6+v/tmb/yI7/25D/27b/5Kv//7b//8j//9v//+T///98PzgjAAAACXBIWXMAAA7DAAAOwwHHb6hkAAAQNUlEQVR4nO3aCXsT1xmG4TFLVdGmJbXTFHcJ0AWni1sS0jY0DSSmC5AKsYj5//+kc2bTaLHQa+H3nBk933URLzOP5sjcjEbjZDnDJDxZ7AUwzKYBKJP0AJRJegDKJD0AZZIegDJJD0CZpAegTNLTBXqWlfPBo+Lz2en1Z/Mt058/rj8L3399a7T6QGGXxWjD/CPLRuWeZ1eqB35967CzefFxOl/N18HsyawBmmV3lo00jjYADbtsC3RSHGO08MBbAp2vg9mTWQBa/vXPnowPHizttQjjXKDbziT8E1ioFoEuDkD3eVaBBj+HlYrZX7Ls4HbxeXHGO5ydjs6yK19XZ9DJOLv2qLFTbGl2CV++PM6ajf/8YXbwq/bxmw0Pi33rQy0CDTt80D7sv8bZwS9PR+Gr/x6Hx6kO4vrJMEnMOqDBR/WnesFv9F0dZ9eflkCLzwq6D9YCnYRt1cb2gqGcdsN5QKfzsnic+oIjAL123FmH8YfDxJ91QPOHVx4HI9Pxh88KNaPmAjPgqK5Bs588m31V2qmBzq9Bi91uh8vZ8rNRcFZfD8w3dF/im8ve8qRdnK3zf49H9UEOPs9fnpYHCc2TbMRL/B7OZqBXf/F1u2V2GjZXdiqW1V5LQEvQxUMcPKiC9oJ1vuEcoNPxYX2s8DiT8lw5Lbm2jwPQvZtNQMvX4uzmo+5b9ApoJSkYXAO0xDdZ2BhmvuGcN0mTmmpVnpXv1GanK6dpZq9m0zVo8Xp7XF0uApSJNBvfxYf5z58LTctAg7nylffhwqvv8kv8EtB1L/EdoLXgvDpI9yUeoPs7a++D1tYmxXuhfPZVIeqs8469fJNUCA5vkoqLgPLuzyhvd+m+SVoAuv5NUgdo8Sbp87x4X1RdX3TfJM2BrtyhZQY+m36TVN8nqm75HHaB/nhc3ykqX5avHY/y+S6ThZtFc6DzDefdqJ/M388v3maaA+U2077NKtCDm+3v4ssb9R8WOl4fZ6On3WvQAtuPwm75k3F282mwM99lOr9RvwC03XDub5LCDldvd2/Uf3JrAWg4yHa/7WcGMon/30ybfgXK7MMkC3Q6/l5xCn/YnmuZ/Zxkgc4vgJl9nmSBzi+AmX2edIEyTA5QJvEBKJP0AJRJegDKJD0AZZKeDtD/bZx3bH7n7Hnf8+X7e4B6+54vH6BD73u+fIAOve/58gE69L7nywfo0PueLz8JoAyT3nAG9fQ9X34SZ9D3fAT6hA7fvx6g3r7nywfo0PueLx+gQ+97vnyADr3v+fIBOvS+58sH6ND7ni8foEPve758gA697/nyATr0vufLB+jQ+w35SYR5n+u/nB6g3n4T0Hy3OdEfAKD02+cAXRsA1NoDVA0Aau0BqgYAtfYAVQOAWnuAqgFArT1A1QCg1h6gagBQaw9QNQCotQeoGgDU2gNUDQBq7QGqBgC19gBVA4Bae4CqAUCtPUDVAKDWHqBqAFBrD1A1AKi1B6gaANTaA1QNAGrtAaoGALX2AFUDgFp7gKoBQK09QNUAoNYeoGoAUGsPUDUAqLUHqBoA1NoDVA0Aau0BqgYAtfYAVQOAWnuAqgFArT1A1QCg1h6gagBQaw9QNQCotQeoGgDU2gNUDQBq7QGqBqtAmTgTA+iOhzQOZ1BPzxlUDQBq7QGqBgC19gBVA4Bae4CqAUCtPUDVAKDWHqBqAFBrD1A1AKi1B6gaANTaA1QNAGrtAaoGALX2AFUDgFp7gKoBQK09QNUAoNYeoGoAUGsPUDUAqLUHqBoA1NoDVA0Aau0BqgYAtfYAVQOAWnuAqgFArT1A1QCg1h6gagBQaw9QNQCotQeoGgDU2gNUDQBq7QGqBgC19gBVA4Bae4CqAUCtPUDVAKDWHqBqAFBrD1A1AKi1B6gaANTaA1QNAGrtAaoGALX2AFUDgFp7gKoBQK09QNUAoNYeoGoAUGsPUDUAqLUHqBoA1NoDVA0Aau0BqgYAtfYAVQOAWnuAqgFArT1A1QCg1h6gagBQaw9QNQCotQeoGqwCZeJMDKA7HtI4nEE9PWdQNQCotQeoGgDU2gNUDQBq7QGqBgC19gBVA4Bae4CqAUCtPUDVAKDWHqBqAFBrD1A1AKi1B6gaANTaA1QNAGrtAaoGALX2AFUDgFp7gKoBQK09QNUAoNYeoGoAUGsPUDUAqLUHqBoA1NoDVA0Aau0BqgYAtfYAVQOAWnuAqgFArT1A1QCg1h6gagBQaw9QNQCotQeoGgDU2gNUDQBq7QGqBgC19gBVA4Bae4CqAUCtPUDVAKDWHqBqAFBrD1A1AKi1B6gaANTaA1QNAGrtAaoGALX2AFUDgFp7gKoBQK09QNUAoNYeoGoAUGsPUDUAqLUHqBoA1NoDVA0Aau0BqgYAtfYAVQOAWnuAqgFArT1A1QCg1h6garAKlIkzMYDueEjjcAb19JxB1QCg1h6gagBQaw9QNQCotQeoGgDU2gNUDQBq7QGqBgC19gBVA4Bae4CqAUCtPUDVAKDWHqBqAFBrD1A1AKi1B6gaANTaA1QNAGrtAaoGALX2AFUDgFp7gKoBQK09QNUAoNYeoGoAUGsPUDUAqLUHqBoA1NoDVA0Aau0BqgYAtfYAVQOAWnuAqgFArT1A1QCg1h6gagBQaw9QNQCotQeoGgDU2gNUDQBq7QGqBgC19gBVA4Bae4CqAUCtPUDVAKDWHqBqAFBrD1A1AKi1B6gaANTaA1QNAGrtAaoGALX2AFUDgFp7gKoBQK09QNUAoNYeoGoAUGsPUDUAqLUHqBoA1NoDVA0Aau0BqgYi0JMT/UktHnDHB+70F1oLQAcN9ORkV6HnPPzWDzzvL7YWgPYe6OYfwskFfg6X88BbJie9mYv95DpP9AJJArPdUjmDenrOoGqgAeUaFKA7De/iE+8BqgYAtfYAVQOAWnuAqgFArT1A1QCg1h6gagBQaw9QNQCotQeoGgDU2gNUDQBq7QGqBgC19gBVA4Bae4CqAUCtPUDVAKDWHqBqAFBrD1A1AKi1B6gaANTaA1QNAGrtAaoGALX2AFUDgFp7gKoBQK09QNUAoNYeoGoAUGsPUDUAqLUHqBoA1NoDVA0Aau0BqgYAtfYAVQOAWnuAqgFArT1A1QCg1h6gagBQaw9QNQCotQeoGgDU2gNUDQBq7QGqBgC19gBVA4Bae4CqAUCtPUDVAKDWHqBqAFBrD1A1AKi1B6gaANTaA1QNAGrtAaoGALX2AFUDgFp7gKoBQK09QNUAoNYeoGqwCpSJMzGA7nhI43AG9fScQdUAoNYeoGoAUGsPUDUAqLUHqBoA1NoDVA0Aau0BqgYAtfYAVQOAWnuAqgFArT1A1QCg1h6gagBQaw9QNQCotQeoGgDU2gNUDQBq7QGqBgC19gBVA4Bae4CqAUCtPUDVAKDWHqBqAFBrD1A1AKi1B6gaANTaA1QNAGrtAaoGALX2AFUDgFp7gKoBQK09QNUAoNYeoGoAUGsPUDUAqLUHqBoA1NoDVA0Aau0BqgYAtfYAVQOAWnuAqgFArT1A1QCg1h6gagBQaw9QNQCotQeoGgDU2gNUDQBq7QGqBgC19gBVA4Bae4CqAUCtPUDVAKDWHqBqAFBrD1A1AKi1B6gaANTaA1QNAGrtAaoGALX2AFUDgFp7gKrBKlAmzsQAuuMhjcMZ1NNzBlUDgFp7gKoBQK09QNUAoNYeoGoAUGsPUDUAqLUHqBoA1NoDVA0Aau0BqgYAtfYAVQOAWnuAqgFArT1A1QCg1h6gagBQaw9QNQCotQeoGgDU2gNUDQBq7QGqBgC19gBVA4Bae4CqAUCtPUDVAKDWHqBqAFBrD1A1AKi1B6gaANTaA1QNAGrtAaoGALX2AFUDgFp7gKoBQK09QNUAoNYeoGoAUGsPUDUAqLUHqBoA1NoDVA0Aau0BqgYAtfYAVQOAWnuAqgFArT1A1QCg1h6gagBQaw9QNQCotQeoGgDU2gNUDQBq7QGqBgC19gBVA4Bae4CqAUCtPUDVAKDWHqBqAFBrD1A1AKi1B6gaANTaA1QNAGrtAaoGq0CZOBMD6I6HNA5nUE/PGVQNAGrtAaoGALX2AFUDgFp7gKoBQK09QNUAoNYeoGoAUGsPUDUAqLUHqBoA1NoDVA0Aau0BqgYAtfYAVQOAWnuAqgFArT1A1QCg1h6gagBQaw9QNQCotQeoGgDU2gNUDQBq7QGqBgC19gBVA4Bae4CqAUCtPUDVAKDWHqBqAFBrD1A1AKi1B6gaANTaA1QNAGrtAaoGALX2AFUDgFp7gKoBQK09QNUAoNYeoGoAUGsPUDUAqLUHqBoA1NoDVA0Aau0BqgYAtfYAVQOAWnuAqgFArf0moP55r+u/nB6g3r7nywfo0PueLx+gQ+97vnyADr3v+fIBOvS+58sH6ND7ni8foEPve758gA697/nyATr0vufLB+jQ+54vH6BD73u+/CSAMkx6wxnU0/d8+UmcQd/zEegTOnz/eoB6+54vH6BD73u+fIAOve/58pMAunm+v+2OlzR7fvy9ffoA7cfx9/bpA7Qfx9/bpw/Qfhx/b58+v0likh6AMkkPQJmkB6BM0gNQJunZDuibT48+/u6SV7J5Xv3m25hHv3t09Kd4h39xdPTTmE8/z99+EevpbwU0LO/5zy57KZvmRdS/oTe//zJ/9esvYx0+/OOM++PPn0f797kV0Dd/+DbuKeybj/4W8/Avgo5vIp5Co7+C/PaPSQN99bvvyrNIxIn7F5TnsZ9/1DPo27/+Pe2X+Bcf7z3Qt1/ci3j0V3c/ivnTf34v8WtQzqBvPo3pM497Ai/++hMHGv0aNDbQV3ejXoCGiXgJ/PwoTKR/oVu+i78X+21kVKCRfSZwhZX4GXTf74NWp5Cop7Co16DpA2WYSANQJukBKJP0AJRJegDKJD0AZZIegC7P7PTw3TudZQcPig+vb90JX02uPG42TG88WPn05aPlTd3HWJh6V6YdgC7PNkBrmGuAdqYBuQxz6THWJUw7AF2ebYA2kHYBuu7bAF0ZgC5PC3R2mmWjPCjMDj77wePO96bjaksXaNhSfAjE6mB6436WZXfCzuUjFpumNz4rviqb6jHqqv7Y7sq0A9DlaYDOTkfln9e3Dos/1Tmy+d7qGTR8Nz+7/qzY0gTT8fVn+VnxcX4mbb5Vf5k3VaeO8IyTHoAuTwO0fN0u/lN+rFE135sDzcqp9yq8FluaYDq+U582O0DvtK/j4UNTdeoozznhAejytECLk11QdFZ+rF7im++tnkHPKqmHnaDcaQlo/a36y7ypOnWEZ5z0AHR5Lgg0bMkXgm2A1lWn9j3RfgxAl6cFGu5SNi/x9fv05nurQCcHrcKF64DNQJuqU/ueaD8GoMtz0TdJxUmwcNZ9k1RrbG54rgHaVM3HdfdG93wAujzhjk+4Hly4zXT/Svc207r7oGFLcR5sbjPdnwPNH1b3pNYAbar2Y70r0w5At5pJfZF4eQGzfgD6rgnXh+V9yksLmA0D0HdOuAckcZMD5vwBKJP0AJRJegDKJD0AZZIegDJJD0CZpAegTNLzfwgSv/3W/ndRAAAAAElFTkSuQmCC" /><!-- --></p>
-<p>For <code>width</code>, using a log transformation didn’t improve the
-visualization considerably. For <code>height</code>, the transformation
-shows a lot less high outliers but a slightly left-skewed distribution
-with some low outliers. Overall, using a log transformation doesn’t seem
-to help considerably.</p>
 <ul>
 <li><strong>Variable and value names</strong>
 <ul>
@@ -270,9 +240,9 @@ in “Good” condition.</em></p>
 <h2>Exploring Research Questions</h2>
 <p>We are now going to seek for answers to our questions of
 interest.</p>
-<div id="which-factors-influence-the-amount-of-stormwater-runoff-absorbed-by-trees-predicting-stormwater-elimination-amount" class="section level3">
-<h3>1. Which factors influence the amount of stormwater runoff absorbed
-by trees? (Predicting stormwater elimination amount)</h3>
+<div id="which-factors-can-help-predict-the-amount-of-stormwater-runoff-absorbed-by-trees" class="section level3">
+<h3>1. Which factors can help predict the amount of stormwater runoff
+absorbed by trees?</h3>
 <div id="fit-random-forest-model" class="section level4">
 <h4>Fit Random Forest Model</h4>
 <pre><code>## Ranger result
@@ -367,9 +337,9 @@ benefits provided by a tree is approximately $7. Also, better RMSE than
 with cross-validation.</em></p>
 </div>
 </div>
-<div id="do-trees-with-overhead-utilities-grow-differently-or-provide-fewer-benefits-classifying-trees" class="section level3">
-<h3>3. Do trees with overhead utilities grow differently or provide
-fewer benefits? (Classifying trees)</h3>
+<div id="can-we-classify-trees-as-having-overhead-utilities-or-not-based-on-their-dimensions-or-the-benefits-they-provide" class="section level3">
+<h3>3. Can we classify trees as having overhead utilities or not based
+on their dimensions or the benefits they provide?</h3>
 <div id="fit-random-forest-model-1" class="section level4">
 <h4>Fit Random Forest Model</h4>
 </div>
@@ -405,9 +375,10 @@ fewer benefits? (Classifying trees)</h3>
 ## </code></pre>
 </div>
 </div>
-<div id="is-there-a-significant-difference-in-the-co_2-benefits-between-trees-located-in-residential-areas-versus-vacant-or-industrial-areas" class="section level3">
-<h3>4. Is there a significant difference in the CO<span class="math inline">\(_2\)</span> benefits between trees located in
-residential areas versus vacant or industrial areas?</h3>
+<div id="can-the-co_2-benefits-provided-by-a-tree-help-classify-the-tree-as-being-located-in-a-residential-area-versus-an-industrial-area" class="section level3">
+<h3>4. Can the CO<span class="math inline">\(_2\)</span> benefits
+provided by a tree help classify the tree as being located in a
+residential area versus an industrial area?</h3>
 <div id="fit-random-forest-model-2" class="section level4">
 <h4>Fit Random Forest Model</h4>
 </div>

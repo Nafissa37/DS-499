@@ -55,23 +55,12 @@ Overall, this dataset gives a comprehensive view of the value and condition of P
 
 After an initial study of the variables contained in this dataset, here are a few questions of interest:
 
-- Which factors influence the amount of stormwater runoff absorbed by trees?
+- Which factors can help predict the amount of stormwater runoff absorbed by trees?
 - Can tree dimensions predict their impact on air quality?
-- Do trees with overhead utilities grow differently or provide fewer benefits?
-- Is there a significant difference in the CO$_2$ benefits between trees located in residential areas versus vacant or industrial areas?
+- Can we classify trees as having overhead utilities or not based on their dimensions or the benefits they provide?
+- Can the CO$_2$ benefits provided by a tree help classify the tree as being located in a residential area versus an industrial area?
 
 ## Splitting Data ##
-
-#### Changes to Data Before Splitting ####
-- Filtering
-  - Stormwater elimination < 10000 gallons
-  - Height < 125 feet
-  - Add Overhead_numeric (may not need this anymore - was used for logistic regression)
-  - Omit NA values
-- Renaming Columns
-- Value Names and Orders
-  - Re-leveled `Condition` 
-  
 
 ```{r data-filtering}
 trees_clean <- trees %>%
@@ -116,7 +105,7 @@ test_data <- testing(trees_split)
 ```
 
 
-## Exploratory Data Analysis (WIP)##
+## Exploratory Data Analysis ##
 
 - **Check for missing values**: Some NA values were entered as ‘N/A’, so that was corrected when reading in the data. Using summary() showed that there are many missing values for most columns in this dataset. **For better visualizations, all the observations with NA values are being omitted**. For categorical variables, count() was used to get a glimpse of categories (e.g., counts of trees in each neighborhood or by land use).
 
@@ -215,31 +204,6 @@ train_data %>%
 Additionally, there weren't values that seemed wrong (e.g., negative values) for the most part. However, 'Colorado spruce' trees were found to have negative total environmental benefits, which could be explained by their poor adaptation to local urban conditions, such as drought, heat, and shade stress (source: [NC Cooperative Extension](https://henderson.ces.ncsu.edu/2020/07/colorado-blue-spruce-issues/#:~:text=Below%204000%20feet%20Colorado%20blue,spruce%20also%20needs%20dry%20air.)
 ). These factors reduce their growth and canopy size, limiting benefits like carbon sequestration and stormwater management. Additionally, high maintenance costs, including pruning or pest control, may outweigh their environmental contributions, leading to a net negative value in the benefit model.
 
-- **Transformations**: Since some of the quantitative variables, like `height` and `width`, are very right-skewed, using a log transformation may yield better results on the graphs:
-  
-```{r}
-# Width
-train_data %>%
-  mutate(width = log(width)) %>%
-  ggplot(aes(x = width)) +
-  geom_boxplot(color = "#7cc560") +
-  labs(title = "Distribution of Width", x = "Log of Width in feet") +
-theme(axis.ticks.y = element_blank(),
-      axis.text.y = element_blank())
-```
-
-```{r}
-# Height
-train_data %>%
-  mutate(height = log(height)) %>%
-  ggplot(aes(x = height)) +
-  geom_boxplot(color = "#7cc560") +
-  labs(title = "Distribution of Height", x = "Log of Height in feet") +
-theme(axis.ticks.y = element_blank(),
-      axis.text.y = element_blank())
-```
-
-For `width`, using a log transformation didn't improve the visualization considerably. For `height`, the transformation shows a lot less high outliers but a slightly left-skewed distribution with some low outliers. Overall, using a log transformation doesn't seem to help considerably.
 
  - **Variable and value names**
     - Some of the variable names are slightly lengthy, especially the variables about environmental benefits. Thus these variables have been recoded to have shorter names.
@@ -377,7 +341,7 @@ ggplot(aes(y = overhead_utilities, fill = condition)) +
 
 We are now going to seek for answers to our questions of interest.
 
-### 1. Which factors influence the amount of stormwater runoff absorbed by trees? (Predicting stormwater elimination amount) ###
+### 1. Which factors can help predict the amount of stormwater runoff absorbed by trees? ###
 #### Fit Random Forest Model ####
 
 ```{r eval=FALSE}
@@ -456,10 +420,7 @@ rf_air_benefits_cv <- train(
   data = train_data_air,                  
   method = "ranger",                      
   trControl = train_control,              # Cross-validation setup
-  tuneGrid = expand.grid(
-    mtry = floor(n_features / 3),
-    splitrule = "variance",          # "variance" for regression
-    min.node.size = 5),                # Default is 5 for regression
+  tuneLength = 10,                        # Try 10 random combinations of mtry
   importance = "impurity"                 # For variable importance
 )
 
@@ -561,7 +522,7 @@ mean(train_data$total_air_benefits)
 ```
 
 
-### 3. Do trees with overhead utilities grow differently or provide fewer benefits? (Classifying trees) ### 
+### 3. Can we classify trees as having overhead utilities or not based on their dimensions or the benefits they provide? ### 
 #### Fit Random Forest Model ####
 ```{r eval=FALSE}
 #Number of features
@@ -605,7 +566,7 @@ confusionMatrix(pred_test$predictions, test_data$overhead_numeric, positive = "1
 
 
 
-### 4. Is there a significant difference in the CO$_2$ benefits between trees located in residential areas versus vacant or industrial areas? ### 
+### 4. Can the CO$_2$ benefits provided by a tree help classify the tree as being located in a residential area versus an industrial area? ### 
 #### Fit Random Forest Model ####
 
 ```{r}
