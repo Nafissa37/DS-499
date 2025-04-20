@@ -181,14 +181,13 @@ summary(train_data$co2_benefits_totalco2_lbs)
 train_data %>%
   ggplot(aes(x = total_benefits)) +
   geom_boxplot(color = "#7cc560") +
-  labs(title = "Distribution of Total Benefits", x = "Total Benefits") +
-  scale_x_continuous(labels = scales::label_dollar()) + 
-  theme(axis.ticks.y = element_blank(),
-        axis.text.y = element_blank())
+  labs(title = "Distribution of Total Benefits", y = "Total Benefits") +
+  scale_x_continuous(labels = scales::label_dollar()) 
 train_data %>%
   ggplot(aes(x = total_benefits)) +
   geom_histogram(binwidth = 25, fill = "#7cc560", color = "black") +
-  labs(title = "Distribution of Total Benefits", x = "Total Benefits", y = "Count") 
+  labs(title = "Distribution of Total Benefits", x = "Total Benefits", y = "Count") +
+  scale_x_continuous(labels = scales::label_dollar())
 
 ```
 ```{r}
@@ -208,7 +207,7 @@ Additionally, there weren't values that seemed wrong (e.g., negative values) for
  - **Variable and value names**
     - Some of the variable names are slightly lengthy, especially the variables about environmental benefits. Thus these variables have been recoded to have shorter names.
 
-    - For some of the categorical variables, there are inconsistencies in the names of the values. For instance, for the variable `growth_space_type`, there were values such as ‘Well or Pit’ and ‘Well/Pit’ or ‘Tree Lawn’ and ‘Tree Law or Parkway’, which are recoded to be in the same categories. 
+    - For some of the categorical variables, there are inconsistencies in the names of the values. For instance, for the variable `growth_space_type`, there were values such as ‘Well or Pit’ and ‘Well/Pit’ or ‘Tree Lawn’ and ‘Tree Law or Parkway’, which are recoded to be in the same categories. Additionally, for `overhead_utilities`, the values have been recoded so that "Yes" and "Conflicting" are Yes" and "No" is "No".
 
 ```{r eval = FALSE}
 train_data %>%
@@ -235,7 +234,7 @@ train_data %>%
 ```{r}
 # Growth Space Type
 train_data %>%
-  ggplot(aes(x = growth_space_type)) +
+  ggplot(aes(x = fct_infreq(growth_space_type))) +
   geom_bar(fill = "#7cc560") +
   labs(title = "Distribution of Growth Space Type", 
        x = "", y = "Count")
@@ -257,7 +256,7 @@ train_data %>%
 ```{r}
 # Land Use
 train_data %>%
-  ggplot(aes(y = land_use)) +
+  ggplot(aes(y = fct_infreq(land_use))) +
   geom_bar(fill = "#7cc560") +
   labs(title = "Distribution of Land Use", 
        x = "Count", y = "")
@@ -267,7 +266,7 @@ train_data %>%
 
 ```{r}
 train_data %>%
-  ggplot(aes(x = condition)) +
+  ggplot(aes(x = fct_infreq(condition))) +
   geom_bar(fill = "#7cc560") +
   labs(title = "Distribution of Tree Condition", 
        x = "", y = "Count")
@@ -328,7 +327,7 @@ ggplot(aes(y = overhead_utilities, fill = condition)) +
   geom_bar(position = "fill") + 
   labs(title = "Tree Condition by Presence of Overhead Utilities",
        fill = "Condition",
-       x = "", 
+       x = "Proportion", 
        y = "Overhead utilities") +
   scale_fill_brewer(palette = "RdYlGn", direction  = -1)  #Default palette going from green to red
 
