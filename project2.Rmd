@@ -18,16 +18,11 @@ install.packages(prettydoc)
 
 ```{r load-libraries}
 library(tidyverse)
-library(leaflet)
-library(stringr)
 library(caret)
-library(broom)
-library(tidymodels)
 library(readr)
-library(pROC)
 library(ranger)
-library(rlang)
 library(vip)
+library(rsample)
 ```
 
 ```{r load-data}
@@ -46,7 +41,7 @@ Each tree is identified by location-specific details, such as `address_number` a
 
 There are also several continuous variables that characterize the physical dimensions and environmental benefits provided by each tree. These include measurements like `height`, `width`, `growth_space_length`, `growth_space_width`, and `diameter_base_height`, which give information on the tree’s size and growth space. Environmental benefits, such as stormwater management and air quality improvement, are quantified through variables like `co2_benefits_maint_lbs`, `air_quality_benfits_so2dep_lbs`, and `stormwater_benefits_runoff_elim.` Additionally, variables like `energy_benefits_electricity_dollar_value` and `energy_benefits_gas_dollar_value` estimate energy savings provided by each tree in terms of reducing electricity and gas usage. 
 
-All the tree benefits from this dataset were calculated using the [National Tree Benefit Calculator Web Service](http://www.treebenefits.com/calculator/webservicedescription.cfm), which estimates the environmental benefits of individual trees based on their species, size (e.g diameter at breast height), and location/regional climate. It uses scientific models developed by the U.S. Forest Service and other research institutions to quantify benefits like carbon dioxide reduction, stormwater management, or air quality improvement in units such as pounds, gallons, etc., or in dollars to represent the financial value of the ecosystem services provided by these trees.
+All the tree benefits from this dataset were calculated using the [National Tree Benefit Calculator Web Service](http://www.treebenefits.com/calculator/webservicedescription.cfm), which estimates the environmental benefits of individual trees based on their species, size (e.g diameter at breast height), and location/regional climate. It uses scientific models developed by the U.S. Forest Service and other research institutions to quantify benefits like carbon dioxide reduction, stormwater management, or air quality improvement in units such as pounds, gallons, or dollars (to represent the financial value of the ecosystem services provided by these trees).
 
 Overall, this dataset gives a comprehensive view of the value and condition of Pittsburgh's urban forest.
 
@@ -60,7 +55,6 @@ After an initial study of the variables contained in this dataset, here are a fe
 - Can we classify trees as having overhead utilities or not based on their dimensions or the benefits they provide?
 - Can the CO$_2$ benefits provided by a tree help classify the tree as being located in a residential area versus an industrial area?
 
-## Splitting Data ##
 
 ```{r data-filtering}
 trees_clean <- trees %>%
@@ -101,13 +95,13 @@ set.seed(1234)
 trees_split <- initial_split(trees_clean, prop = 0.80)
 train_data <- training(trees_split)
 test_data <- testing(trees_split)
-
 ```
 
 
 ## Exploratory Data Analysis ##
 
-- **Check for missing values**: Some NA values were entered as ‘N/A’, so that was corrected when reading in the data. Using summary() showed that there are many missing values for most columns in this dataset. **For better visualizations, all the observations with NA values are being omitted**. For categorical variables, count() was used to get a glimpse of categories (e.g., counts of trees in each neighborhood or by land use).
+**Note that observations with missing values have been omitted, and the data has been split into training data and testing data using an 80/20 split.**
+ 
 
 ```{r eval = FALSE}
 train_data %>%
@@ -143,6 +137,7 @@ train_data %>%
 theme(axis.ticks.y = element_blank(),
       axis.text.y = element_blank())
 ```
+
 ```{r eval = FALSE}
 summary(train_data$width)
 ```
@@ -157,6 +152,7 @@ train_data %>%
 theme(axis.ticks.y = element_blank(),
       axis.text.y = element_blank())
 ```
+
 ```{r eval =  FALSE}
 summary(train_data$diameter_base_height)
 ```
@@ -171,12 +167,13 @@ train_data %>%
 theme(axis.ticks.y = element_blank(),
       axis.text.y = element_blank())
 ```
+
 ```{r eval = FALSE}
 summary(train_data$co2_benefits_totalco2_lbs)
 ```
 
 
-``` {r}
+``` {r eval=FALSE}
 # Total Benefits
 train_data %>%
   ggplot(aes(x = total_benefits)) +
@@ -188,9 +185,8 @@ train_data %>%
   geom_histogram(binwidth = 25, fill = "#7cc560", color = "black") +
   labs(title = "Distribution of Total Benefits", x = "Total Benefits", y = "Count") +
   scale_x_continuous(labels = scales::label_dollar())
-
 ```
-```{r}
+```{r eval=FALSE}
 summary(train_data$total_benefits)
 ```
 
@@ -200,14 +196,10 @@ train_data %>%
   select(common_name, scientific_name, total_benefits)
 ```
 
-Additionally, there weren't values that seemed wrong (e.g., negative values) for the most part. However, 'Colorado spruce' trees were found to have negative total environmental benefits, which could be explained by their poor adaptation to local urban conditions, such as drought, heat, and shade stress (source: [NC Cooperative Extension](https://henderson.ces.ncsu.edu/2020/07/colorado-blue-spruce-issues/#:~:text=Below%204000%20feet%20Colorado%20blue,spruce%20also%20needs%20dry%20air.)
-). These factors reduce their growth and canopy size, limiting benefits like carbon sequestration and stormwater management. Additionally, high maintenance costs, including pruning or pest control, may outweigh their environmental contributions, leading to a net negative value in the benefit model.
-
-
  - **Variable and value names**
     - Some of the variable names are slightly lengthy, especially the variables about environmental benefits. Thus these variables have been recoded to have shorter names.
 
-    - For some of the categorical variables, there are inconsistencies in the names of the values. For instance, for the variable `growth_space_type`, there were values such as ‘Well or Pit’ and ‘Well/Pit’ or ‘Tree Lawn’ and ‘Tree Law or Parkway’, which are recoded to be in the same categories. Additionally, for `overhead_utilities`, the values have been recoded so that "Yes" and "Conflicting" are Yes" and "No" is "No".
+    - For some of the categorical variables, there are inconsistencies in the names of the values. For instance, for the variable `growth_space_type`, there were values such as ‘Well or Pit’ and ‘Well/Pit’ or ‘Tree Lawn’ and ‘Tree Law or Parkway’, which are recoded to be in the same categories. Additionally, the variable `overhead_utilities` had the options 'Yes', 'No', and 'Conflicting'. These values have been recoded so that 'Yes' and 'Conflicting' are 'Yes' and 'No' is 'No'.
 
 ```{r eval = FALSE}
 train_data %>%
@@ -230,8 +222,7 @@ train_data %>%
 ```
 
 
-
-```{r}
+```{r eval=FALSE}
 # Growth Space Type
 train_data %>%
   ggplot(aes(x = fct_infreq(growth_space_type))) +
@@ -240,7 +231,6 @@ train_data %>%
        x = "", y = "Count")
 ```
 
-*There is a considerable variation between growth space types. 'Well/Pit', 'Tree Lawn', and 'Open' are by far the most common growth space types. 'Island' and 'Raised Planter' are the least common spaces.*
 
 ```{r}
 # Presence of Overhead Utilities
@@ -264,7 +254,7 @@ train_data %>%
 
 *The most common land use category for trees in this dataset is 'Residential', followed by 'Commercial/Industrial' and 'Vacant'. There are relatively very small numbers of trees in other types of land use, such as 'Water/Wetland', 'Golf Course', and 'Agriculture'.*
 
-```{r}
+```{r eval=FALSE}
 train_data %>%
   ggplot(aes(x = fct_infreq(condition))) +
   geom_bar(fill = "#7cc560") +
@@ -272,79 +262,21 @@ train_data %>%
        x = "", y = "Count")
 ```
 
-*Most trees are in 'Good' or 'Fair' condition, while very few trees are in 'Excellent' or 'Very Good' condition. The numbers of trees in 'Critical' and 'Dead' conditions are roughly the same.*
-
-  - **Exploring pairs of potentially related variables**: We will now explore pairs of potentially related variables to identify relationships and interactions that could emerge when included in the same models.  
-
-```{r}
-#Height vs. Width
-train_data %>%
-  ggplot(aes(x = width, y = height)) +
-  geom_point(color = "#7cc560", alpha = 0.75) +
-  labs(title = "Height vs. Width", subtitle = "(for height < 125)",
-       x = "Width in feet", y = "Height in feet")
-```
-
-*This scatter plot shows a weak to moderate positive linear relationship between tree height and width for values of height less than 125 feet (filtered to exclude a few extreme outliers). As the width of a tree increases, its height tends to increase as well. Trees with widths under 20 feet vary widely in height, while trees with larger widths tend to have heights within a more limited range, which could be explained by the fact that there are fewer trees with larger widths (the outliers). It should also be noted that height and width both have discrete values only, which is reflected in the scatter plot.*
-
-
-```{r eval = FALSE}
-train_data %>%
-  count(height)
-```
-
-
-```{r}
-train_data %>%
-  filter(stems < 200) %>%
-  ggplot(aes(x = growth_space_area, y = stems)) +
-    geom_point(color = "#7cc560", alpha = 0.75) + 
-    labs(title = "Number of Stems vs. Growth Space Area",
-         subtitle = "(for number of stems < 200)",
-         x = "Growth Space Area in squared feet",
-         y = "Number of Stems")
-
-```
-
-*This plot shows the relationship between a tree's number of stems and the area of its growth space. There doesn't seem to be a linear relationship between number of stems and growth space area, though a smaller growth space occasionally supports trees with more stems, and only a small number of trees have both high growth space area and many stems.*
-
-```{r}
-train_data %>%
-  mutate(growth_space_type2 = fct_lump_n(growth_space_type, 3)) %>%
-  ggplot(aes(x = diameter_base_height, y = growth_space_type2)) +
-  geom_boxplot(color = "#7cc560") +
-  labs(title = "Growth Space Type vs. Diameter Base Height", 
-       x = "Diameter Base Height in inches", 
-       y = "")
-```
-
-*These boxplots show how the diameter at base height of trees differs across types of growth spaces. Trees in 'Open' and 'Tree Lawn' spaces have larger median diameters and larger Q1 and Q3 values compared to trees in 'Well/Pit' and 'Other' spaces. This could suggest that trees in more open spaces are able to grow larger in diameter, potentially due to fewer constraints. Additionally, all the boxplots are right-skewed with lots of high outliers.*
-
-
-```{r}
-train_data %>%
-ggplot(aes(y = overhead_utilities, fill = condition)) +
-  geom_bar(position = "fill") + 
-  labs(title = "Tree Condition by Presence of Overhead Utilities",
-       fill = "Condition",
-       x = "Proportion", 
-       y = "Overhead utilities") +
-  scale_fill_brewer(palette = "RdYlGn", direction  = -1)  #Default palette going from green to red
-
-```
-
-*The stacked bar graphs show the relationship between the presence of overhead utilities and tree condition. Since the distributions of tree condition are not exactly the same for trees with overhead utilities and trees without overhead utilities, there appears to be an association between the presence of overhead utilities and tree condition. There are different proportions of trees in "Poor", "Fair", and "Good" conditions in trees with and without overhead utilities, while there are similar proportions of trees in "Critical" and "Very Good" conditions. This may indicate that trees with average health status tend to be more affected by the presence of overhead utilities than trees with very good or very bad health status. For instance, when there are no overhead utilities, there are more trees in "Good" condition than trees in "Fair" condition, whereas when there are overhead utilities, there are more trees in "Fair" condition than trees in "Good" condition.*
-
 
 ## Exploring Research Questions ## 
 
-We are now going to seek for answers to our questions of interest.
+We are now going to explore our questions of interest using random forest models, for the following reasons:
+
+- Compared to linear or logistic regression models, they can can handle more complex patterns in the data, including non-linear relationships and interactions between variables.
+- They are much less sensitive to outliers, which is especially helpful here given the large number of extreme values in the dataset.
+
+- They provide built-in variable importance scores, which make it easier to answer the research questions about the most impactful features on tree properties.
 
 ### 1. Which factors can help predict the amount of stormwater runoff absorbed by trees? ###
-#### Fit Random Forest Model ####
+
+#### &#9733; Random Forest Model ####
 
 ```{r eval=FALSE}
-
 #Number of features
 n_features <- length(setdiff(names(train_data), c("id", "address_number", "street", "longitude", "latitude", "stormwater_elimination", "stormwater_benefits")))
 
@@ -361,11 +293,9 @@ rf_stormwater
 
 #Save random forest model
 write_rds(rf_stormwater, "rf_stormwater.rds")
-
 ```
 
 ```{r}
-
 #Load saved model
 rf_stormwater <- read_rds("rf_stormwater.rds")
 
@@ -373,92 +303,34 @@ rf_stormwater
 ```
 
 
-#### Evaluate Model Performance ####
+#### &#9733; Model Performance Evaluation ####
 
+- Variable Importance Plot
 
 ```{r}
 #Variable importance plot
-vip::vip(rf_stormwater, num_features=10)
+p <- vip::vip(rf_stormwater, num_features = 10)
+
+# Modify the fill color using ggplot2 
+p + 
+  geom_col(fill = "#7cc560") +
+  theme_minimal()
 ```
 
-*`Overhead_utilities` and `growth_space_type` have very low importance.*
+*Many variables related to air quality benefits have high importance for predicting the amount of stormwater eliminated by a tree. Some of these variables include the ones related to the amount of PM10 or CO~2~ eliminated by a tree, the amount of Ozone or Nitrogen Dioxide deposited by a tree, and the total air benefits provided by a tree.* 
 
+- RMSE
 
 ```{r}
 # get OOB RMSE
 (default_rmse <- sqrt(rf_stormwater$prediction.error))
 ```
-*A good? RMSE since the average stormwater elimination of a tree is 1115 gallons (per year?).*
+*The RMSE is approximately 31.05 gallons, which seems pretty good since the average stormwater elimination of a tree is 1115 gallons, so the model's predictions are relatively close to the actual values.*
 
 
-### 2. Can tree dimensions predict their impact on air quality? (Predicting air benefits) ### 
+### 2. Can tree dimensions help predict their impact on air quality? ### 
 
-#### Fit Random Forest Model (with cross-validation) ####
-
-```{r eval=FALSE}
-# Find columns related to air benefits and CO2
-air_benefits_columns <- grep("^air", names(train_data), value = TRUE)
-CO2_benefits_columns <- grep("^co2", names(train_data), value = TRUE)
-
-#Number of features
-n_features <- length(setdiff(names(train_data), c("id", "address_number", "street", "longitude", "latitude", "total_air_benefits", air_benefits_columns, "sequestred_CO2", CO2_benefits_columns)))
-
-# Remove the unnecessary columns for training
-train_data_air <- train_data[, !(names(train_data) %in% c("id", "address_number", "street", "longitude", "latitude", "sequestred_CO2", air_benefits_columns, CO2_benefits_columns))]
-
-# Set up the control parameters for cross-validation
-train_control <- trainControl(
-  method = "cv",       # Cross-validation
-  number = 10,         # Number of folds
-  verboseIter = TRUE   # Display progress
-)
-
-# Train the Random Forest model using cross-validation
-rf_air_benefits_cv <- train(
-  total_air_benefits ~ .,                 
-  data = train_data_air,                  
-  method = "ranger",                      
-  trControl = train_control,              # Cross-validation setup
-  tuneLength = 10,                        # Try 10 random combinations of mtry
-  importance = "impurity"                 # For variable importance
-)
-
-rf_air_benefits_cv
-
-
-#Save model
-write_rds(rf_air_benefits_cv, "rf_air_benefits_cv.rds")
-
-```
-
-```{r}
-
-#Load saved model
-rf_air_benefits_cv <- read_rds("rf_air_benefits_cv.rds")
-
-rf_air_benefits_cv
-```
-
-
-#### Evaluate Model Performance ####
-
-
-```{r}
-#Variable importance plot
-vip::vip(rf_air_benefits_cv$finalModel, num_features = 10)
-```
-
-```{r}
-# RMSE
-rf_air_benefits_cv$results$RMSE
-```
-*Not so good RMSE? (average monetary value of the total air benefits provided by a tree is approximately $7).*
-
-**Sources:**
-- [caret package documentation on model training and tuning](https://topepo.github.io/caret/model-training-and-tuning.html)  
-- [Stack Overflow: Cross-validation with Ranger](https://stackoverflow.com/questions/76048739/cross-validation-on-r-ranger-library)
-
-#### Fit Random Forest Model (without cross-validation) ####
+#### &#9733; Random Forest Model ####
 
 ```{r eval=FALSE}
 # Find all columns that start with "air"
@@ -488,7 +360,6 @@ rf_air_benefits
 
 #Save random forest model
 write_rds(rf_air_benefits, "rf_air_benefits.rds")
-
 ```
 
 ```{r}
@@ -500,29 +371,38 @@ rf_air_benefits
 ```
 
 
-#### Evaluate Model Performance ####
+#### &#9733; Model Performance Evaluation ####
 
+- Variable Importance Plot
 
 ```{r}
 #Variable importance plot
-vip::vip(rf_air_benefits, num_features=10)
+p <- vip::vip(rf_air_benefits, num_features = 10)
+
+# Modify the fill color using ggplot2 
+p + 
+  geom_col(fill = "#7cc560") +
+  theme_minimal()
 ```
 
-*Some features related to tree dimensions, such as `diameter_base_height`, `height`, or `property_value_benefits_leaf_surface_area`, have moderate importance in predicting their impact on air quality.*
+*Some variables related to tree dimensions, such as `diameter_base_height`, `height`, or `property_value_benefits_leaf_surface_area` (leaf surface area in square feet contributing to property value benefits), have relatively high importance in predicting tree impact on air quality. Other variables with high importance include `stormwater_benefits`, `tree condition`, and `scientific name`.*
 
 
 ```{r}
 # get OOB RMSE
 (default_rmse <- sqrt(rf_air_benefits$prediction.error))
 ```
-*A good? RMSE since the average monetary value of the total air benefits provided by a tree is approximately $7. Also, better RMSE than with cross-validation.*
+*The RMSE is approximately $0.16, which seems pretty good since the average monetary value of the total air benefits provided by a tree is approximately $7, so the model's predictions are relatively close to the actual values.*
+
 ```{r eval=FALSE}
 mean(train_data$total_air_benefits)
 ```
 
 
 ### 3. Can we classify trees as having overhead utilities or not based on their dimensions or the benefits they provide? ### 
-#### Fit Random Forest Model ####
+
+#### &#9733; Random Forest Model ####
+
 ```{r eval=FALSE}
 #Number of features
 n_features <- length(setdiff(names(train_data), c("id", "address_number", "street", "longitude", "latitude", "overhead_utilities", "overhead_numeric")))
@@ -543,30 +423,41 @@ write_rds(rf_overhead1, "rf_overhead1.rds")
 ```
 
 ```{r}
-
 #Load saved model
 rf_overhead1 <- read_rds("rf_overhead1.rds")
 
+rf_overhead1
 ```
 
 
-#### Evaluate Model Performance ####
+#### &#9733; Model Performance Evaluation ####
+
+- Variable Importance Plot
 
 ```{r}
 #Variable importance plot
-vip::vip(rf_overhead1, num_features=10)
+p <- vip::vip(rf_overhead1, num_features = 10)
+
+# Modify the fill color using ggplot2 
+p + 
+  geom_col(fill = "#7cc560") +
+  theme_minimal()
 ```
+
+*The most important variables for classifying a tree as having overhead utilities include `fire_zone` (the fire zone where the tree is located), `neighborhood`, `scientific_name`, and `tract` (census tract where the tree is located). Some variables related to tree dimensions, like `height`, `width`, and `growth_space_width`, also show up as important. However, most benefit-related variables don’t seem to contribute much to the prediction, although a few related to property value benefits do show up among the top 20 features.*
+
+- Confusion Matrix
 
 ```{r}
 pred_test <- predict(rf_overhead1, test_data, type="response")
 confusionMatrix(pred_test$predictions, test_data$overhead_numeric, positive = "1")
-
 ```
-
+*The accuracy rate for this model is 78.37% (compared to 62.44% with logistic regression), so the model got 78.37% of the predictions overall right, which is not bad. The sensitivity is 59.76% (59.76% of the trees that do have overhead utilities were correctly identified) while the specificity is 88.03% (88.03% of the trees that do not have overhead utilities were correctly identified), so the model is much better at recognizing trees without overhead utilities (less false positives and more false negatives).*
 
 
 ### 4. Can the CO$_2$ benefits provided by a tree help classify the tree as being located in a residential area versus an industrial area? ### 
-#### Fit Random Forest Model ####
+
+#### &#9733; Random Forest Model ####
 
 ```{r}
 #Focusing only on 2 categories for land_use (Residential and Industrial)
@@ -577,12 +468,10 @@ train_data_land_use <- train_data %>%
 test_data_land_use <- test_data %>%
   filter(land_use == "Residential" | land_use == "Commercial/Industrial") %>%
   mutate(land_use = ifelse(land_use == "Commercial/Industrial", "Industrial", land_use))
-
 ```
 
 
 ```{r eval=FALSE}
-
 train_data_land_use$land_use <- as.factor(train_data_land_use$land_use)
 test_data_land_use$land_use <- as.factor(test_data_land_use$land_use)
 
@@ -606,19 +495,31 @@ write_rds(rf_land_use1, "rf_land_use1.rds")
 ```
 
 ```{r}
-
 #Load saved model
 rf_land_use1 <- read_rds("rf_land_use1.rds")
 
+rf_land_use1
 ```
 
+#### &#9733; Model Performance Evaluation ####
 
-#### Evaluate Model Performance ####
+
+- Variable Importance Plot
+
 
 ```{r}
 #Variable importance plot
-vip::vip(rf_land_use1, num_features=10)
+p <- vip::vip(rf_land_use1, num_features = 10)
+
+# Modify the fill color using ggplot2 
+p + 
+  geom_col(fill = "#7cc560") +
+  theme_minimal()
 ```
+
+*The most important variables for classifying a tree by location type include `fire_zone`, `neighborhood`, `scientific_name`, `tract`, and many variables related to tree's growth space. The CO~2~ benefits variables don't seem to be very important in predicting its location type (residential vs industrial), but they do show up among the top 20 features.*
+
+- Confusion Matrix
 
 ```{r}
 # Get predictions
@@ -634,16 +535,19 @@ preds <- factor(preds, levels = levels(actuals))
 
 # Compute confusion matrix
 confusionMatrix(preds, actuals)
-
-
 ```
 
+*The accuracy rate for this model is 94.97% (compared to 83.3% with logistic regression), so the model got 94.97% of the predictions overall right, which is pretty good. The sensitivity is 78.72% (78.72% of the trees that are located in an industrial area were correctly identified) while the specificity is 98.45% (98.45% of the trees that are located in a residential area were correctly identified), so the model is better at recognizing trees located in a residential area.*
 
-## Conclusion (WIP)##
 
-This paper explored the ecological benefits provided by trees in Pittsburgh, focusing on factors influencing stormwater management, CO$_2$ capture, air quality, and spatial distributions. The analyses employed both linear and logistic regression models, alongside spatial visualizations, to uncover patterns and relationships between variables in the dataset. The results showed that tree attributes such as diameter at base height, growth space type, overhead utilities, and condition significantly influence stormwater elimination. Furthermore, specific species like *'Platanus x acerifolia'* and *'Quercus palustris'* were found to provide the highest benefits across multiple ecological metrics. Spatially, trees were generally well-distributed across the city, with the North East showing higher environmental contributions, likely due to species composition and tree condition.  
+## Conclusion ##
 
-However, several limitations affected the reliability of these findings. The residual plots for the linear regression models revealed a slight fan-shaped pattern, indicating potential heteroscedasticity and suggesting that model assumptions of constant variance may not fully hold. Outliers were another concern, as many were filtered to improve the models, but their removal may have excluded important variation. The dataset itself, last updated in 2020, may not reflect current conditions, limiting the validity of conclusions drawn about tree health and benefits. The logistic regression model predicting the presence of overhead utilities also showed low predictive power, emphasizing the need for additional or more relevant predictors.  
+This paper explored Pittsburgh’s urban forest by applying random forest models to identify which tree features best predict environmental benefits and classification outcomes. 
 
-If the study were to be conducted again, collecting more recent and comprehensive data would be a priority to improve the accuracy and applicability of the findings. Addressing model assumptions through transformations or alternative modeling approaches could also improve statistical validity. Despite these limitations, this analysis highlights the significant contributions of urban trees to environmental sustainability and offers a foundation for future studies aimed at optimizing urban forestry strategies.
+Models predicting the amount of stormwater elimination and air quality benefits performed well, with low RMSE values relative to average benefit levels. Tree dimensions, such as height, diameter, and growth space, and air quality variables were among the top predictors. 
 
+For classification questions, like determining the presence of overhead utilities or distinguishing between residential and industrial land use, spatial variables (e.g. neighborhood, fire zone, census tract) were more important. Environmental benefit variables played a smaller role in these models, though some, like property value benefits, still appeared as moderately important features.
+
+Overall, structural and spatial features were more useful for classification, while benefit-related variables were more informative in regression. 
+
+Beyond model performance, the research questions can help inform practical decisions in city planning. For example, identifying which trees offer the most environmental benefits can help prioritize planting in high-need areas. Classifying trees with overhead utilities could improve safety and maintenance planning, and patterns across land use types may point out areas lacking in tree-related benefits. Altogether, these findings can support more data-informed decisions about where and how to manage trees across different neighborhoods in Pittsburgh.
